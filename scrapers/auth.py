@@ -11,7 +11,7 @@ import requests
 from dotenv import load_dotenv
 
 # Load .env from the project root
-load_dotenv(os.path.join(os.path.dirname(__file__), ".env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 BASE_URL = os.environ["ONROTO_BASE_URL"]
 LEAGUE = os.environ["ONROTO_LEAGUE"]

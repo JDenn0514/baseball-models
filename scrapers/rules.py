@@ -10,15 +10,7 @@ from bs4 import BeautifulSoup, NavigableString
 from datetime import datetime
 from pathlib import Path
 
-BASE_URL = "https://onroto.fangraphs.com"
-LEAGUE_ID = "MoonGrahm"
-LOGIN_URL = f"{BASE_URL}/index.pl"
-LOGIN_DATA = {
-    "user": "pete@srjsteel.com",
-    "pass": "ASUuoa12",
-    "submit": "Login",
-    "postback": "1",
-}
+from scrapers.auth import login, BASE_URL, LEAGUE
 
 # Correct URL path includes baseball/webnew/ and correct page keys
 RULES_PAGES = [
@@ -34,37 +26,7 @@ RULES_PAGES = [
     ("misc", "Miscellaneous Rules"),
 ]
 
-OUTPUT_FILE = Path("/Users/jacobdennen/baseball-models/data/league_rules.txt")
-
-
-def login(session: requests.Session) -> str:
-    """Establish cookies and log in. Return the session_id."""
-    print("Fetching homepage to establish cookies...")
-    resp = session.get(BASE_URL, allow_redirects=True)
-    resp.raise_for_status()
-    print(f"  Homepage status: {resp.status_code}")
-
-    print("Logging in...")
-    resp = session.post(LOGIN_URL, data=LOGIN_DATA, allow_redirects=True)
-    resp.raise_for_status()
-    print(f"  Login status: {resp.status_code}")
-    print(f"  Final URL: {resp.url}")
-
-    session_id = None
-    match = re.search(r"session_id=([A-Za-z0-9]+)", resp.url)
-    if match:
-        session_id = match.group(1)
-    else:
-        match = re.search(r"session_id=([A-Za-z0-9]+)", resp.text)
-        if match:
-            session_id = match.group(1)
-
-    if session_id:
-        print(f"  Session ID: {session_id}")
-    else:
-        print("  WARNING: Could not extract session_id.")
-
-    return session_id
+OUTPUT_FILE = Path("data/league_rules.txt")
 
 
 def get_question_text(cell):
@@ -289,7 +251,7 @@ def scrape_all_rules(session: requests.Session, session_id: str | None) -> dict[
     all_rules = {}
 
     for page_key, page_title in RULES_PAGES:
-        url = f"{BASE_URL}/baseball/webnew/display_specs.pl?{LEAGUE_ID}+0+{page_key}&session_id={session_id}"
+        url = f"{BASE_URL}/baseball/webnew/display_specs.pl?{LEAGUE}+0+{page_key}&session_id={session_id}"
 
         print(f"\nFetching: {page_title} ({page_key})...")
         print(f"  URL: {url}")
@@ -355,14 +317,7 @@ def save_rules(all_rules: dict[str, list[tuple[str, str]]], path: Path):
 
 
 def main():
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/120.0.0.0 Safari/537.36",
-    })
-
-    session_id = login(session)
+    session, session_id = login()
     all_rules = scrape_all_rules(session, session_id)
     save_rules(all_rules, OUTPUT_FILE)
 

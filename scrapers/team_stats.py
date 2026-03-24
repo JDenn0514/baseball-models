@@ -14,7 +14,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup
 
-from onroto_auth import BASE_URL, LEAGUE, login
+from scrapers.auth import BASE_URL, LEAGUE, login
 
 TEAM_IDX = "0"  # fixed league parameter
 YEARS = range(2015, 2026)

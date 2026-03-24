@@ -16,7 +16,7 @@ import pandas as pd
 import requests
 from bs4 import BeautifulSoup, Tag
 
-from onroto_auth import login, BASE_URL, LEAGUE
+from scrapers.auth import login, BASE_URL, LEAGUE
 
 YEARS = range(2015, 2026)
 OUTPUT_PATH = "/Users/jacobdennen/baseball-models/data/historical_rosters.csv"

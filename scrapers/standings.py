@@ -13,7 +13,7 @@ import pandas as pd
 import re
 import time
 
-from onroto_auth import login, BASE_URL, LEAGUE
+from scrapers.auth import login, BASE_URL, LEAGUE
 
 TEAM_IDX = "0"
 YEARS = range(2015, 2026)
