@@ -159,32 +159,44 @@ overvaluation compresses how much of your PVP+SP premium you should actually pay
 
 ### Composite Targeting Score (TS)
 
-```
-TS = PVP + SP + MI_adjustment
+Each component is **min-max rescaled to 0–10** across available free agents so that
+no single component dominates the composite:
 
-where:
-  MI_adjustment =  0         if MI >= −$3   (market roughly fair or underprices)
-               = (MI + 3)   if −$8 < MI < −$3  (partial penalty)
-               = −$5 cap    if MI <= −$8   (significant overvaluation; walk away)
+```
+PVP_sc = 10 × (PVP − min_PVP) / (max_PVP − min_PVP)
+SP_sc  = 10 × (SP  − min_SP)  / (max_SP  − min_SP)
+MI_sc  = 10 × (MI  − min_MI)  / (max_MI  − min_MI)
+
+TS = (PVP_sc + SP_sc + MI_sc) / 3     (range 0–10)
 ```
 
 TS is the primary sorting key for the targeting table. Higher TS = target harder.
 
-Both the composite TS and each individual component (PVP, SP, MI) are displayed.
+All three scaled components and the composite TS are displayed. Raw dollar values
+for PVP and SP are still used in the bid ceiling calculation.
+
+**Note:** The original design used a gate-adjusted MI (penalty-only for overvaluation,
+−$3 to −$8 range → −$5 cap). The rescaled version uses the full bidirectional MI
+signal (positive = undervalued, negative = overvalued) so that market undervaluation
+gets credit in the targeting score, not just in the bid ceiling.
 
 ---
 
 ### Bid Ceiling
 
 ```
-Bid_Ceiling = auction_value + max(0, PVP) + max(0, SP)
+Bid_Ceiling = auction_value + 0.5 × max(0, PVP_raw$) + 0.5 × max(0, SP_raw$)
 Bid_Ceiling = min(Bid_Ceiling, budget_cap)
 
 budget_cap = remaining_budget − (remaining_unfilled_spots − 1) × $1
 ```
 
-Interpretation: *Never pay more than this. The floor is market price; bonuses are what
-you should pay extra for roster fit and scarcity.*
+The 0.5 dampening factor prevents bid ceilings from becoming unrealistically aggressive
+(raw PVP alone can exceed a player's entire production value). The dampened ceiling
+represents a pragmatic premium you'd actually pay.
+
+Interpretation: *Never pay more than this. The floor is market price; bonuses are a
+discounted fraction of what roster fit and scarcity are theoretically worth.*
 
 ---
 
@@ -372,7 +384,7 @@ so they align at exactly the same height:
 | PVP    | Personal Value Premium = MSP × $6.55/pt |
 | SP     | Scarcity Premium |
 | TS     | Targeting Score = PVP + SP + MI_adjustment |
-| Bid $  | Bid Ceiling = Auc$ + max(0,PVP) + max(0,SP), capped at budget |
+| Bid $  | Bid Ceiling = Auc$ + 50% × max(0,PVP$) + 50% × max(0,SP$), capped at budget |
 
 Note: Profile column removed from table (redundant given position filter). Add back
 if requested.

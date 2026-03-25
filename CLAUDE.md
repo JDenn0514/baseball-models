@@ -12,7 +12,7 @@ league's historical data.
 - 10 teams, AL-only player pool (15 AL teams)
 - 10 scoring categories: R, HR, RBI, SB, AVG (batting) + W, SV, ERA, WHIP, SO (pitching)
 - Roster: 15 hitters + 11 pitchers active, reserves (DL/FARM/RES)
-- Auction: $360/team budget, $1 min bid, $75 max salary
+- Auction: $360/team budget, $1 min bid, no max salary
 - Keeper league: up to 3-year contracts, extensions at +$5 or +$10
 - 900 IP minimum for ERA/WHIP scoring (teams below get 0 points)
 - Full rules in `league-context.md`

@@ -1,0 +1,380 @@
+---
+title: "Auction Targeting"
+subtitle: "Research, metric design, and 2026 Gusteroids guidance"
+date: "2026-03-25"
+format:
+  html:
+    theme: flatly
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: true
+    code-summary: "Show code"
+    fig-width: 10
+    fig-height: 6
+    self-contained: true
+execute:
+  echo: true
+  warning: false
+  message: false
+---
+
+```{r setup}
+#| echo: false
+
+library(tidyverse)
+library(gt)
+library(scales)
+
+# ── Colors (shared palette from valuations.html) ──
+primary   <- "#3A6EA5"
+secondary <- "#C1666B"
+accent    <- "#2A9D8F"
+bg        <- "#faf9f5"
+grid      <- "#ededeb"
+text_col  <- "#2d2d2d"
+mid       <- "#666666"
+light     <- "#999999"
+
+tier_colors <- c(
+  "Elite"   = "#3A6EA5",
+  "Premium" = "#2A9D8F",
+  "Solid"   = "#f4a261",
+  "Filler"  = "#999999",
+  "Min"     = "#cccccc"
+)
+
+rank_color <- function(r) {
+  case_when(r >= 7 ~ accent, r <= 3 ~ secondary, TRUE ~ "#f4a261")
+}
+
+theme_sgp <- function(base_size = 11) {
+  theme_minimal(base_size = base_size) +
+    theme(
+      plot.background  = element_rect(fill = bg, color = NA),
+      panel.background = element_rect(fill = bg, color = NA),
+      panel.grid.major.y = element_line(color = grid, linewidth = 0.3),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor   = element_blank(),
+      plot.title    = element_text(color = text_col, face = "bold", size = 13, hjust = 0),
+      plot.subtitle = element_text(color = mid, size = 10, hjust = 0, margin = margin(b = 10)),
+      plot.caption  = element_text(color = light, size = 8, hjust = 0),
+      axis.text     = element_text(color = mid, size = 9),
+      axis.title    = element_text(color = text_col, size = 10),
+      legend.position = "none",
+      plot.margin = margin(10, 15, 10, 10)
+    )
+}
+
+# ── Data ──
+msp_raw       <- read_csv("../data/msp_gusteroids_atc_2026.csv", show_col_types = FALSE)
+keepers_all   <- read_csv("../data/preauction_rosters_2026.csv", show_col_types = FALSE)
+standings     <- read_csv("../data/msp_projected_standings_2026.csv", show_col_types = FALSE)
+valuations    <- read_csv("../data/valuations_atc_2026.csv", show_col_types = FALSE)
+
+keeper_names <- keepers_all$player_name
+players <- msp_raw |> filter(!player_name %in% keeper_names)
+
+players <- players |>
+  mutate(
+    tier = case_when(
+      dollar_value >= 25 ~ "Elite",
+      dollar_value >= 15 ~ "Premium",
+      dollar_value >= 8  ~ "Solid",
+      dollar_value >= 4  ~ "Filler",
+      dollar_value >= 1  ~ "Min",
+      TRUE               ~ "Sub"
+    ),
+    tier = factor(tier, levels = c("Elite", "Premium", "Solid", "Filler", "Min", "Sub"))
+  )
+
+gust <- standings |> filter(team == "Gusteroids")
+gust_keepers <- keepers_all |> filter(team == "Gusteroids")
+```
+
+# Research Report
+
+## What We Did
+
+Built a real-time auction targeting tool for the Moonlight Graham league's annual draft. The tool combines player valuations with live auction state to produce a continuously updated **Targeting Score** and **Bid Ceiling** for every available player.
+
+The core question: given *your* roster, *your* budget, and the players still available, who should you target next and how much should you pay?
+
+We designed a three-component metric framework, implemented it as a Streamlit application, and calibrated it to the Gusteroids' 2026 roster and projected standings.
+
+## What We Learned
+
+### Categories are the unit of value
+
+Standard SGP dollar values assume a generic team drafting from scratch. In a keeper league auction, your actual value of a player depends on your current roster composition --- a player who pushes you from 7th to 5th in SB is worth more to a team weak in steals than to a team already ranked 2nd.
+
+The breakthrough framing was thinking in terms of **marginal standings points** rather than marginal SGP. SGP is a means to an end; the end is standings points. By estimating the full 10-team standings matrix and measuring how a player moves your position within it, we get a number with direct real-world meaning: *this player is worth approximately X more to me than to the average team.*
+
+This is the **Personal Value Premium (PVP)** --- the dollar premium a player adds to the Gusteroids specifically, beyond their generic market value.
+
+### Scarcity is opportunity cost
+
+Scarcity isn't about how many players exist at a position. It's about whether you can get comparable quality later if you pass now. A player is scarce when the gap between their value and the next comparable player's value is large.
+
+Two-dimensional bucketing --- dollar tier (Elite, Premium, Solid, Filler, Min) crossed with category profile (Power, Speed, Average, Balanced, Closer, Starter) --- captures both quality and functional role. The **Scarcity Premium (SP)** is the dollar gap between a player and the mean of the top 3 remaining comparables. When many comparables exist, SP collapses to zero. When a player is the last or one of few in their quality+role bucket, SP spikes.
+
+### MI as gate, not weight
+
+Market inefficiency is important information but not symmetric with PVP and SP. You shouldn't target a player just because they're undervalued if they don't fill a need; and you shouldn't skip a player just because they're overvalued if the fit and scarcity premium justifies paying more than market.
+
+**Market Inefficiency (MI)** = production value (single-pool) minus auction value (split-pool). Positive means the market underprices the player; negative means overpriced. In the composite Targeting Score, MI contributes on the same 0--10 scale as PVP and SP, so undervaluation does get credit --- but the bid ceiling formula keeps MI as a gate: your ceiling is market price plus the premiums you should actually pay for fit and scarcity.
+
+### Validation decision
+
+Proper validation of scarcity requires auction order data --- who was available when, at what prices. Public AL-only leagues (LABR, TOUT Wars) come closest structurally but differ enough in team count and rules that their data would miscalibrate rather than calibrate the model.
+
+**Decision:** Record tonight's auction comprehensively (nomination order, all bids, final prices) and use that as the first ground-truth dataset. Post-season, backtest using final standings against TS at auction time.
+
+## Applicability
+
+- **PVP** is directly reusable each season with updated projections and keeper rosters
+- **SP** tier breakpoints may need annual tuning as the player pool quality distribution shifts
+- **The team competition model** improves over time as you accumulate more keeper data
+- **Dollars-per-standings-point** conversion ($6.55/pt) can be empirically calibrated after each season
+
+
+# Metric Design
+
+## Three Components
+
+The targeting score is built from three components, each rescaled to a common 0--10 range so that no single component dominates the composite.
+
+```{r component_table}
+#| echo: false
+tibble::tribble(
+  ~Component, ~`Full Name`,             ~`What It Measures`,                                ~`Raw Units`,     ~`Scale`,
+  "PVP",      "Personal Value Premium", "Roster fit: standings points this player adds to *your* team", "MSP × $6.55/pt", "0–10",
+  "SP",       "Scarcity Premium",       "Opportunity cost: gap between this player and next comparable", "Dollar gap",     "0–10",
+  "MI",       "Market Inefficiency",    "Market pricing: production value minus auction market price",   "Dollar diff",    "0–10"
+) |>
+  gt() |>
+  cols_label(
+    Component = "Component",
+    `Full Name` = "Full Name",
+    `What It Measures` = "What It Measures",
+    `Raw Units` = "Raw Units",
+    `Scale` = "Scale"
+  ) |>
+  tab_style(
+    style = cell_text(weight = "bold", font = "JetBrains Mono"),
+    locations = cells_body(columns = Component)
+  ) |>
+  tab_options(table.font.size = 13)
+```
+
+### Composite Targeting Score
+
+$$
+TS = \frac{PVP_{0\text{-}10} + SP_{0\text{-}10} + MI_{0\text{-}10}}{3}
+$$
+
+Each component is min-max rescaled to 0--10 across the pool of available free agents. The composite TS is their average, also on a 0--10 scale. Higher TS = target harder. Equal weighting is the baseline --- after tonight's auction, the recorded data can be used to empirically calibrate weights.
+
+### Bid Ceiling
+
+$$
+\text{Bid Ceiling} = \min\!\bigl(\text{Auc\$} + 0.5 \times \max(0, PVP_{\$}) + 0.5 \times \max(0, SP_{\$}),\;\text{budget cap}\bigr)
+$$
+
+The bid ceiling uses the **raw dollar** PVP and SP (not the rescaled 0--10 values), dampened by 50% to prevent unrealistically aggressive ceilings --- raw PVP alone can exceed a player's entire production value. Capped at the budget constraint. It answers: *what is the absolute most I should pay for this player?*
+
+
+# 2026 Gusteroids Situation
+
+## Keeper Roster
+
+```{r keeper_table}
+#| echo: false
+gust_keepers |>
+  mutate(
+    section = case_when(
+      status == "min" ~ "Farm / Reserve",
+      position == "P" ~ "Pitchers",
+      TRUE ~ "Hitters"
+    ),
+    section = factor(section, levels = c("Hitters", "Pitchers", "Farm / Reserve"))
+  ) |>
+  arrange(section, position) |>
+  select(section, position, player_name, salary, contract_year, status) |>
+  gt(groupname_col = "section") |>
+  cols_label(
+    position      = "Pos",
+    player_name   = "Player",
+    salary        = "Salary",
+    contract_year = "Year",
+    status        = "Status"
+  ) |>
+  fmt_currency(columns = salary, decimals = 0) |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_row_groups()
+  ) |>
+  tab_header(
+    title = "Gusteroids 2026 Keepers",
+    subtitle = "11 active + 4 farm — $88 committed, $272 remaining"
+  ) |>
+  tab_options(table.font.size = 12)
+```
+
+## Budget Position
+
+```{r budget}
+#| echo: false
+total_salary <- sum(gust_keepers$salary)
+budget_left <- 360 - total_salary
+act_h <- gust_keepers |> filter(status %in% c("act", "dis"), position != "P") |> nrow()
+act_p <- gust_keepers |> filter(status %in% c("act", "dis"), position == "P") |> nrow()
+h_open <- 15 - act_h
+p_open <- 11 - act_p
+spots <- h_open + p_open
+eff_budget <- budget_left - spots
+
+tibble::tribble(
+  ~Metric,           ~Value,
+  "Total budget",    "$360",
+  "Keeper salary",   paste0("$", total_salary),
+  "Budget left",     paste0("$", budget_left),
+  "Open hitter spots",  as.character(h_open),
+  "Open pitcher spots", as.character(p_open),
+  "Effective budget",   paste0("$", eff_budget, " ($272 − ", spots, " × $1 reserve)")
+) |>
+  gt() |>
+  cols_label(Metric = "", Value = "") |>
+  tab_style(
+    style = cell_text(weight = "bold"),
+    locations = cells_body(columns = Metric)
+  ) |>
+  tab_options(table.font.size = 12)
+```
+
+## Category Ranks (Projected)
+
+The Gusteroids' keeper-only standings projection reveals a stark split: elite pitching volume but severely depleted batting.
+
+```{r cat_ranks}
+#| echo: false
+#| fig-height: 4.5
+
+cats <- c("R", "HR", "RBI", "SB", "AVG", "W", "SV", "ERA", "WHIP", "SO")
+cat_type <- c(rep("Batting", 5), rep("Pitching", 5))
+
+ranks_df <- tibble(
+  category = factor(cats, levels = rev(cats)),
+  rank = map_dbl(cats, ~ gust[[paste0("rank_", .x)]]),
+  type = cat_type
+) |>
+  mutate(
+    color = case_when(rank >= 7 ~ accent, rank <= 3 ~ secondary, TRUE ~ "#f4a261"),
+    label = paste0(category, "  (", rank, ")")
+  )
+
+ggplot(ranks_df, aes(x = rank, y = category, fill = color)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = rank), hjust = -0.4, size = 3.2,
+            fontface = "bold", color = text_col) +
+  scale_fill_identity() +
+  scale_x_continuous(limits = c(0, 11), breaks = seq(0, 10, 2)) +
+  labs(
+    title = "Gusteroids projected category ranks (keeper-only)",
+    subtitle = "Green = strong (rank ≥ 7), orange = mid (4–6), red = weak (≤ 3). Higher rank = better.",
+    x = "Rank (1 = worst, 10 = best)", y = NULL
+  ) +
+  theme_sgp() +
+  theme(panel.grid.major.y = element_blank(),
+        panel.grid.major.x = element_line(color = grid, linewidth = 0.3))
+```
+
+**The batting counting stats (R, HR, RBI, SB) are all ranked 8th of 10.** This is the primary reason PVP scores are high for hitters who contribute in these categories --- every marginal hitter who pushes the Gusteroids up from 8th to 7th (or better) in a counting category earns a full standings point.
+
+By contrast, W and SO are already ranked 1st. Pitchers who contribute wins and strikeouts have low marginal value to this specific roster because you can't gain standings points when you're already at the top.
+
+
+## Free Agent Pool
+
+```{r tier_breakdown}
+#| echo: false
+tier_summary <- players |>
+  filter(tier != "Sub") |>
+  count(tier, pos_type) |>
+  pivot_wider(names_from = pos_type, values_from = n, values_fill = 0) |>
+  mutate(total = hitter + pitcher) |>
+  arrange(tier)
+
+tier_summary |>
+  gt() |>
+  cols_label(tier = "Tier", hitter = "Hitters", pitcher = "Pitchers", total = "Total") |>
+  tab_header(
+    title = "Free Agent Pool by Tier",
+    subtitle = "592 free agents total (470 Sub-tier excluded from table)"
+  ) |>
+  tab_options(table.font.size = 12)
+```
+
+
+# Strategic Guidance
+
+## Targeting Priorities
+
+Based on the Gusteroids' category deficits and the available player pool:
+
+**1. Hitting volume is the primary need.** All four batting counting categories (R, HR, RBI, SB) sit at rank 8. Every hitter who contributes meaningfully in these categories has outsized marginal value. The targeting score reflects this --- the highest-PVP hitters are those with strong SGP contributions across R, HR, RBI, and SB.
+
+**2. Pitching is a depth play, not a need.** With W and SO already at rank 1, adding more starting pitcher volume yields diminishing returns. Pitching acquisitions should focus on:
+
+- **Closers** (SV rank is only 5th --- room to gain standings points here)
+- **ERA/WHIP stabilizers** (rank 6th in both --- high-floor arms protect your rate stats as you accumulate IP from less reliable starters)
+
+**3. Scarcity matters most at the extremes.** The SP component activates when a player is the last (or one of very few) in their tier+profile bucket. Watch for:
+
+- Elite/Premium speed profiles (few pure SB contributors at top tiers)
+- Premium closers (only a handful of reliable saves sources)
+
+**4. Don't overpay for pitching volume you don't need.** Elite SP arms will be popular across the league, but their marginal standings value to the Gusteroids is lower than their market price suggests. Let other teams bid these up. Your MI component correctly flags these as overvalued *for you*.
+
+## Budget Strategy
+
+With $272 in budget and 15 open spots:
+
+- **Effective budget** is $257 (reserving $1 per open spot)
+- **Budget cap** per player is $258 (can spend down to $1 for the last spot)
+- **Target allocation**: concentrate spending on 4--6 impact hitters ($20--45 range), fill pitching cheaply ($1--8 range), and leave room for 1--2 mid-range closers ($10--20)
+
+The roster is young and cheap at keeper positions. The auction budget should be deployed aggressively on short-term hitting production --- these players won't be kept, so extract maximum 2026 value.
+
+## How to Use the App
+
+Run the live tool during the auction:
+
+```bash
+streamlit run auction/app.py
+```
+
+**During the auction:**
+
+1. As each player is sold, log the result in the top bar (player, price, winning team)
+2. The table automatically re-sorts by Targeting Score after each logged result
+3. Use the **position filter** to focus on positions you need to fill
+4. Use the **tier filter** (default: Solid & above) to focus on impact players
+5. The **Bid $** column is your hard ceiling --- never exceed it
+
+**Reading the table:**
+
+| Column | Range | Meaning |
+|--------|-------|---------|
+| PVP    | 0--10 | Roster fit. Higher = fills your weak categories |
+| SP     | 0--10 | Scarcity. Higher = fewer comparable alternatives remain |
+| MI     | 0--10 | Market value. Higher = more undervalued by market |
+| TS     | 0--10 | Composite. Average of PVP, SP, MI. Primary sort |
+| Bid $  | $1--75 | Hard ceiling in raw dollars |
+
+**Key signals:**
+
+- **High PVP + High SP**: Must-target. This player fills a need and you can't replace them later.
+- **High PVP + Low SP**: Target but don't overpay. Comparable options exist if the price gets too high.
+- **Low PVP + High MI**: Bargain available but doesn't help your roster. Let someone else grab the deal.
+- **High TS overall**: This is your priority list. Trust the composite.
