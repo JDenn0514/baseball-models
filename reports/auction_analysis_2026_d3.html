@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Moonlight Graham 2026 Auction Analysis</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:#faf9f5;color:#2d2d2d;line-height:1.6}
+.container{max-width:980px;margin:0 auto;padding:0 28px 72px}
+header{padding:52px 0 32px;border-bottom:1px solid #ededeb;margin-bottom:36px}
+header h1{font-size:30px;font-weight:700;letter-spacing:-.5px;color:#2d2d2d;margin-bottom:4px}
+header .byline{font-size:13px;color:#999;margin-bottom:28px}
+.stat-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:28px}
+.stat-card{background:#fff;border:1px solid #ededeb;border-radius:6px;padding:14px 16px}
+.stat-card .val{font-size:26px;font-weight:700;color:#2d2d2d;line-height:1;margin-bottom:3px}
+.stat-card .lbl{font-size:11px;color:#999;text-transform:uppercase;letter-spacing:.5px}
+.mode-bar{display:flex;align-items:flex-start;gap:14px;padding:16px 18px;background:#fff;border:1px solid #ededeb;border-radius:8px;margin-bottom:48px}
+.mode-label{font-size:12px;font-weight:600;color:#666;white-space:nowrap;padding-top:6px}
+.toggle-pill{display:flex;background:#f0efe9;border-radius:20px;padding:3px;gap:2px;flex-shrink:0;margin-top:2px}
+.tpill{padding:5px 16px;border-radius:17px;border:none;font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;background:transparent;color:#999}
+.tpill.active{background:#2d2d2d;color:#fff}
+.mode-desc{font-size:12px;color:#666;line-height:1.55}
+.mode-desc strong{color:#2d2d2d}
+.mode-desc .note{color:#999;font-style:italic;margin-top:4px;display:block}
+section{margin-bottom:60px}
+section h2{font-size:19px;font-weight:700;color:#2d2d2d;margin-bottom:5px}
+.section-meta{font-size:12px;color:#999;margin-bottom:14px;font-style:italic}
+.narrative{font-size:14px;color:#444;line-height:1.8;margin-bottom:20px;max-width:820px}
+.narrative strong{color:#2d2d2d;font-weight:600}
+.narrative em{font-style:italic;color:#555}
+.narrative .callout{display:block;margin:14px 0;padding:12px 16px;background:#f5f4f0;border-left:3px solid #ededeb;border-radius:0 4px 4px 0;font-size:13px;color:#555;line-height:1.6}
+.narrative .callout strong{color:#2d2d2d}
+.mode-callout{display:flex;gap:14px;margin:0 0 20px;max-width:820px}
+.mode-callout-box{flex:1;padding:12px 16px;border-radius:6px;font-size:13px;line-height:1.6}
+.mode-callout-box .mct{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.mc-single{background:#f0f4f9;border-left:3px solid #3A6EA5}
+.mc-split{background:#fdf4f4;border-left:3px solid #C1666B}
+.mode-callout-box[data-mode="single"]{opacity:1;transition:opacity .2s}
+.mode-callout-box[data-mode="split"]{opacity:.38;transition:opacity .2s}
+.split-mode .mode-callout-box[data-mode="single"]{opacity:.38}
+.split-mode .mode-callout-box[data-mode="split"]{opacity:1}
+.chart-wrap{width:100%;overflow-x:auto}
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px 14px;margin-bottom:14px;align-items:center}
+.filter-label{font-size:12px;color:#999;flex-shrink:0}
+.team-chip{display:flex;align-items:center;gap:5px;font-size:12px;color:#666;cursor:pointer;padding:4px 8px;border-radius:20px;border:1px solid #ededeb;background:#fff;transition:all .15s;user-select:none}
+.team-chip:hover{border-color:#ccc;color:#2d2d2d}
+.team-chip.dimmed{opacity:.35;background:#faf9f5}
+.reset-link{font-size:12px;color:#999;cursor:pointer;text-decoration:underline;margin-left:4px}
+.reset-link:hover{color:#444}
+hr.divider{border:none;border-top:1px solid #ededeb;margin:52px 0}
+.synthesis{background:#fff;border:1px solid #ededeb;border-radius:8px;padding:24px 28px;margin-bottom:52px}
+.synthesis h2{font-size:17px;font-weight:700;color:#2d2d2d;margin-bottom:14px}
+.synthesis-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 36px}
+.synthesis-item{font-size:13px;color:#555;line-height:1.65}
+.synthesis-item dt{font-weight:700;color:#2d2d2d;margin-bottom:3px;font-size:13px}
+.glossary-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 40px;margin-top:20px}
+.glossary-item dt{font-size:13px;font-weight:700;color:#2d2d2d;margin-bottom:3px}
+.glossary-item dd{font-size:13px;color:#555;line-height:1.6}
+.tooltip{position:fixed;background:#fff;border:1px solid #ededeb;border-radius:6px;padding:10px 14px;font-size:12px;color:#2d2d2d;pointer-events:none;opacity:0;transition:opacity .1s;box-shadow:0 4px 14px rgba(0,0,0,.09);max-width:240px;z-index:1000;line-height:1.5}
+.tooltip .tp{font-weight:700;font-size:13px;margin-bottom:3px}
+.tooltip .tm{font-size:11px;margin-bottom:7px}
+.tooltip .tr{display:flex;justify-content:space-between;gap:14px}
+.tooltip .tl{color:#999}.tooltip .tv{font-weight:600}
+.pos{color:#2A9D8F}.neg{color:#C1666B}
+svg text{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif}
+</style>
+</head>
+<body>
+<div class="container">
+
+<header>
+  <h1>Moonlight Graham 2026 Auction Analysis</h1>
+  <p class="byline">AL-only keeper league &middot; 10 teams &middot; $260/team budget &middot; March 2026 &middot; Valuations: ATC projections via SGP model</p>
+  <div class="stat-grid">
+    <div class="stat-card"><div class="val">119</div><div class="lbl">Players Auctioned</div></div>
+    <div class="stat-card"><div class="val">$1,389</div><div class="lbl">Total Auction Spend</div></div>
+    <div class="stat-card"><div class="val">$11.70</div><div class="lbl">Average Price Paid</div></div>
+    <div class="stat-card"><div class="val">$48</div><div class="lbl">Top Sale &middot; Ramírez</div></div>
+    <div class="stat-card"><div class="val">10</div><div class="lbl">$1 Nominations Won</div></div>
+  </div>
+
+</header>
+
+<!-- SCATTER -->
+<section id="s-scatter">
+  <h2>Price vs. Model Value &mdash; All 119 Players</h2>
+  <p class="section-meta">Hover any dot for details &middot; Click team chips to filter &middot; Toggle shifts pitcher dot positions</p>
+  <p class="narrative">
+    Every auctioned player sits on this chart. The diagonal is <strong>fair value</strong> — points above it cost
+    more than the model predicted; points below were bargains. No team finished in positive territory:
+    every dot cluster sits above the line on balance, which is the structural signature of keeper league
+    inflation — all ten teams arrive with their full $260 budgets but compete over a reduced player pool
+    after keepers are removed.
+    <br><br>
+    The two valuation models tell materially different stories here.
+    Under <strong>single pool</strong>, hitter and pitcher model values share the same $/PAR rate, so the
+    scatter looks balanced — pitchers and hitters both cluster near the line with similar scatter.
+    Switch to <strong>split pool</strong> and the picture reorganizes: <em>pitcher dots shift left</em>
+    (their model values fall ~23%, to $3.11/PAR) while <em>hitter dots shift right</em> (their values
+    rise ~25%, to $5.06/PAR). The effect is that the same price paid now looks like an overpay for most
+    pitchers and better value for most hitters.
+    <br><br>
+    The biggest bargains were pitchers under single pool — <strong>Tanner Bibee</strong> (+$9.5),
+    <strong>Sonny Gray</strong> (+$7.0), <strong>Ranger Suárez</strong> (+$6.8) — but their surpluses
+    shrink substantially under split pool (+$4.4, +$0.9, +$1.9), suggesting the market was closer to
+    correctly pricing these pitchers than single pool implies. The steepest overpays —
+    <strong>José Ramírez</strong> (-$15.6), <strong>Maikel Garcia</strong> (-$14.3),
+    <strong>Wyatt Langford</strong> (-$13.4) — are on the hitting side and are relatively stable across
+    both models, reinforcing that the top-of-market premium on elite hitters is a real, model-independent phenomenon.
+  </p>
+  <div class="filter-bar" style="margin-bottom:8px">
+    <span class="filter-label">Valuation model:</span>
+    <div class="toggle-pill" id="scatter-toggle">
+      <button class="tpill active" data-mode="single" onclick="setModeScatter('single')">Single Pool</button>
+      <button class="tpill" data-mode="split" onclick="setModeScatter('split')">Split Pool</button>
+    </div>
+  </div>
+  <div class="filter-bar">
+    <span class="filter-label">Highlight team:</span>
+    <div id="team-filter-chips"></div>
+    <span class="reset-link" id="reset-filter" style="display:none">Reset</span>
+  </div>
+  <div class="chart-wrap" id="scatter-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- POSITION -->
+<section id="s-position">
+  <h2>Position Market Inflation</h2>
+  <p class="section-meta">Price paid &divide; model value by position &middot; 1.0× = fair value &middot; Toggle changes the model baseline</p>
+  <p class="narrative">
+    This is where the choice of valuation model has the most dramatic effect on conclusions — and where
+    the most strategically important insight lives.
+    <br><br>
+    Under <strong>single pool</strong>, starting pitchers appear to be the league's biggest bargain at
+    <strong>0.76×</strong>: the market paid only 76 cents for every dollar of projected SP value. But this
+    reading is largely an artifact of the model. Single pool assigns the same $/PAR rate to everyone,
+    implicitly treating the auction as if half the budget should go to pitching — when in reality, this
+    league has historically allocated only 39–47% to pitching. The model inflates SP values to the point
+    where the market looks cheap by comparison.
+    <br><br>
+    Switch to <strong>split pool</strong> and that story evaporates. SPs go from 0.76× to <strong>0.99×</strong>
+    — essentially fair value. The market priced starting pitchers correctly all along; it was the
+    single-pool model that was mispriced, not the auction. This is a meaningful corrective: teams who
+    felt they were "stealing" starters this year were largely paying what the market said those starters were worth.
+    <span class="callout">
+      <strong>The real market inefficiency is relief pitching.</strong> Under split pool, RPs jump to
+      <strong>2.09×</strong> — the most overpriced position in the league by a wide margin. The market
+      consistently pays a steep premium for save upside that neither valuation model captures well. A
+      closer projected for 30 saves goes for far more than his underlying run-prevention stats would justify.
+      This finding is robust: RP is expensive in both models (1.61× single, 2.09× split), but the true
+      magnitude of the premium only becomes visible under split pool.
+    </span>
+    <strong>Catchers (1.32× split)</strong> and <strong>outfielders (1.35× split)</strong> remain above
+    fair value in both models, though the premiums look more moderate under split pool. Catcher scarcity
+    in an AL-only format is a structural feature that won't change; OF demand reflects the position's
+    outsized counting-stat contribution. The second baseman market (1.08× split) was the most efficiently
+    priced position in the league — nearly no premium above model in either framework.
+    <br><br>
+    <em>The broader implication:</em> single-pool valuation systematically understates the cost of pitching
+    and overstates the cost of hitting relative to how the market actually behaves. Teams setting targets
+    using single-pool models are likely setting pitcher ceilings too high and hitter ceilings too low.
+    Split-pool targets, calibrated to historical spending, will produce more accurate bid guidance.
+  </p>
+  <div class="filter-bar">
+    <span class="filter-label">Valuation model:</span>
+    <div class="toggle-pill" id="position-toggle">
+      <button class="tpill active" data-mode="single" onclick="setModePosition('single')">Single Pool</button>
+      <button class="tpill" data-mode="split" onclick="setModePosition('split')">Split Pool</button>
+    </div>
+  </div>
+  <div class="mode-callout">
+    <div class="mode-callout-box mc-single" data-mode="single">
+      <div class="mct">Single Pool &mdash; Key Ratios</div>
+      SP: <strong>0.76×</strong> (apparent bargain) &middot; RP: 1.61× &middot; OF: 1.69× &middot; C: 1.65× &middot; 2B: 1.35×
+    </div>
+    <div class="mode-callout-box mc-split" data-mode="split">
+      <div class="mct">Split Pool 61/39 &mdash; Key Ratios</div>
+      SP: <strong>0.99×</strong> (fair value) &middot; RP: <strong>2.09×</strong> (most expensive) &middot; OF: 1.35× &middot; C: 1.32× &middot; 2B: 1.08×
+    </div>
+  </div>
+  <div class="chart-wrap" id="position-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- BUDGET -->
+<section id="s-budget">
+  <h2>Full Budget Picture &mdash; Keepers + Auction</h2>
+  <p class="section-meta">Each team's $260 cap: keeper salary + auction spend + remaining &middot; Hover for detail &middot; Unaffected by valuation model</p>
+  <p class="narrative">
+    This chart captures actual dollars committed — it doesn't change with the valuation model because
+    it reflects what teams actually spent, not what a model says things were worth. It's the clearest
+    view of each team's strategic constraints heading into the season.
+    <br><br>
+    <strong>Mean Machine</strong> committed $170 to keepers before the auction began — more than two-thirds
+    of their entire budget — limiting their open-market activity to just $85 across 9 players. This wasn't
+    a failure of execution; it reflects a deliberate multi-year strategy of building through keeper
+    contracts. <strong>Thunder &amp; Lightning</strong> ($150) and <strong>R&amp;R</strong> ($157) were
+    similarly constrained, playing a roster-maintenance game rather than a roster-building one.
+    <br><br>
+    <strong>Gusteroids</strong> had the most auction flexibility with just $66 committed to keepers,
+    leaving $194 available — nearly three times Mean Machine's auction budget. That flexibility is
+    visible throughout this analysis: 12 players acquired, $181 spent, the heaviest auction activity
+    of any team. <strong>Kerry &amp; Mitch</strong> also ran an aggressive auction ($170 spent, $71 in
+    keepers), ending with just $19 remaining — the tightest final cap in the league and a sign they
+    were comfortable with their roster at close.
+    <br><br>
+    The keeper vs. auction tradeoff has an important interaction with the valuation model question.
+    Keeper contracts are priced at their original draft value (often years ago), not at current market
+    rates. Teams with heavy keeper books are locking in historical prices — which may be excellent or
+    poor deals depending on how those players have developed. That context isn't captured in this chart
+    but is worth keeping in mind when comparing teams with very different keeper-to-auction ratios.
+  </p>
+  <div class="chart-wrap" id="budget-chart"></div>
+  <p style="font-size:11px;color:#999;margin-top:8px">
+    <span style="display:inline-block;width:10px;height:10px;background:#3A6EA5;opacity:.75;border-radius:2px;vertical-align:middle"></span> Keeper salary &nbsp;
+    <span style="display:inline-block;width:10px;height:10px;background:#C1666B;opacity:.75;border-radius:2px;vertical-align:middle"></span> Auction spend &nbsp;
+    <span style="display:inline-block;width:10px;height:10px;background:#999;opacity:.3;border-radius:2px;vertical-align:middle"></span> Remaining cap
+  </p>
+</section>
+
+<hr class="divider">
+
+<!-- SURPLUS -->
+<section id="s-surplus">
+  <h2>Team Value Report Card</h2>
+  <p class="section-meta">Total model surplus across all auction acquisitions &middot; Keepers excluded &middot; Toggle changes the model baseline</p>
+  <p class="narrative">
+    No team finished positive in either model — keeper inflation ensures the market collectively overpays.
+    But the two frameworks produce meaningfully different team rankings, and the gap between them reveals
+    which teams ran pitching-heavy strategies and which ran balanced or hitting-heavy ones.
+    <br><br>
+    Under <strong>single pool</strong>, <strong>Gusteroids</strong> executed the most efficient auction
+    in the league at -$10.3. That ranking is driven largely by their pitching acquisitions: Gilbert, Kirby,
+    Pepiot, and Suárez all showed surplus against single-pool SP values. Switch to <strong>split pool</strong>
+    and Gusteroids drops to <strong>#6 at -$23.4</strong>, because pitcher model values fall ~23% and
+    the "surplus" on those pitchers shrinks or reverses. Under split pool, Gilbert (paid $30) flips from
+    +$1.8 to -$5.6; Kirby (paid $25) from +$2.8 to -$3.7. The pitching staff wasn't a bargain — it was
+    market price. Gusteroids paid correctly for good pitching, but didn't steal it.
+    <br><br>
+    The teams that rise under split pool are the ones that leaned into hitting.
+    <strong>R&amp;R</strong> climbs from #3 to <strong>#1 at -$7.5</strong> — their patient, value-oriented
+    approach and relatively hitting-balanced roster looks much better when hitter values are recalibrated
+    upward. <strong>Kerry &amp; Mitch</strong> similarly rises from #6 to #2 (-$16.0): their heavy
+    hitter acquisitions (Ramírez, Henderson, Altuve, Garcia, Ward) carry higher split-pool values
+    even though some of those players were nominally overpaid at auction.
+    <span class="callout">
+      <strong>What this means in practice:</strong> if your pre-draft valuation model uses single pool,
+      you'll systematically see pitching as undervalued and be drawn toward pitcher-heavy strategies.
+      Split pool corrects for this, showing pitching as roughly fairly priced. Teams that
+      used single-pool intuition to justify SP spending weren't wrong to buy those pitchers — they're
+      good players — but they weren't getting the edge the model implied.
+    </span>
+    <strong>HAMMERHEADS</strong> rank last in both models (-$66.3 single, -$46.8 split) though the gap
+    narrows under split pool because their 18-player approach included a mix of hitters and pitchers.
+    Their deficit reflects volume — buying more players creates more opportunities for the market to
+    outbid the model — as well as some meaningful overpays on early nominations.
+  </p>
+  <div class="filter-bar">
+    <span class="filter-label">Valuation model:</span>
+    <div class="toggle-pill" id="surplus-toggle">
+      <button class="tpill active" data-mode="single" onclick="setModeSurplus('single')">Single Pool</button>
+      <button class="tpill" data-mode="split" onclick="setModeSurplus('split')">Split Pool</button>
+    </div>
+  </div>
+  <div class="mode-callout">
+    <div class="mode-callout-box mc-single" data-mode="single">
+      <div class="mct">Single Pool &mdash; Rankings</div>
+      <strong>#1 Gusteroids</strong> -$10.3 &middot; #2 Mean Machine -$12.6 &middot; #3 R&amp;R -$19.6<br>
+      #9 On a Bender -$44.4 &middot; <strong>#10 HAMMERHEADS -$66.3</strong>
+    </div>
+    <div class="mode-callout-box mc-split" data-mode="split">
+      <div class="mct">Split Pool &mdash; Rankings</div>
+      <strong>#1 R&amp;R</strong> -$7.5 &middot; #2 Kerry &amp; Mitch -$16.0 &middot; #3 Shrooms -$19.9<br>
+      #9 Thunder &amp; Lightning -$37.0 &middot; <strong>#10 HAMMERHEADS -$46.8</strong>
+    </div>
+  </div>
+  <div class="chart-wrap" id="surplus-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- SPENDING -->
+<section id="s-spending">
+  <h2>Team Spending Profiles</h2>
+  <p class="section-meta">Each row = one team &middot; Dot size proportional to price &middot; Blue = hitter, rose = pitcher &middot; Unaffected by valuation model</p>
+  <p class="narrative">
+    This chart shows the actual shape of each team's auction strategy — and in combination with the
+    surplus analysis, it explains why model choice matters so much for evaluating those strategies.
+    <br><br>
+    The rose-heavy right tail on <strong>Gusteroids'</strong> row is immediately visible: their three
+    largest purchases (Gilbert $30, Kirby $25, Seager $23) are two pitchers and a hitter, and the rest
+    of the roster was assembled from mid-range investments. Under single pool, this pitching-forward
+    approach looked like a strategic win. Under split pool, it looks like fair execution — paying market
+    rates for good-but-not-stolen pitchers while building a solid mid-tier hitter core.
+    <br><br>
+    The contrast with <strong>HAMMERHEADS</strong> is instructive. HAMMERHEADS spread $190 across 18
+    players with no single acquisition above $17 — the flattest distribution in the league at 35%
+    concentration. Under single pool they look expensive (worst surplus); under split pool the gap
+    narrows somewhat, suggesting their balanced approach captured slightly more hitter value than
+    the single-pool ranking implies.
+    <br><br>
+    <strong>Kosher Hogs</strong> (77% concentration) and <strong>Mean Machine</strong> (71%) took the
+    stars-and-scrubs approach, concentrating budget in a few premium slots. The degree to which this
+    works depends on whether those top players hit their projections — the model surplus analysis only
+    tells you whether you overpaid relative to expectation, not whether the expectation will be met.
+  </p>
+  <div class="chart-wrap" id="spending-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- TIMELINE -->
+<section id="s-timeline">
+  <h2>Auction Flow &mdash; How Prices Evolved</h2>
+  <p class="section-meta">Price by nomination order &middot; Grey line = 10-nomination rolling average &middot; Unaffected by valuation model</p>
+  <p class="narrative">
+    Auction prices compressed sharply over the course of the night's 119 nominations. The first 30
+    averaged <strong>$24.20</strong>; nominations 31–70 dropped to <strong>$10.20</strong>; the final
+    49 averaged just <strong>$5.20</strong>, with ten players going for $1. This compression is structural
+    — as the high-end players are taken and budgets are spent, competition narrows and prices fall.
+    <br><br>
+    The opening run set the tone: Ramírez ($48), Henderson ($40), Muñoz ($34), Langford ($35), and
+    Raleigh ($30) all went in the first 11 nominations. These early prices represent the market's
+    assessment of scarcity — each of these players had legitimate competition from multiple bidders
+    with full budgets, which drove prices well above model in all cases. As a general rule, the early
+    auction is where the largest nominal overpays happen; the late auction is where the
+    largest nominal bargains (on a percentage basis) are found.
+    <br><br>
+    The interplay with model choice is subtle here: the late-auction SP bargains that look most
+    dramatic under single pool (Bibee at nom 61, Cameron at nom 100, Eflin at nom 91) look much
+    more like fair-market deals under split pool. Patience in the SP market wasn't a skill edge
+    so much as recognizing that a correctly-priced pitcher was available late once budget constraints
+    took the early bidders out of the market.
+  </p>
+  <div class="chart-wrap" id="timeline-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- GUSTEROIDS -->
+<section id="s-gusteroids">
+  <h2>Gusteroids &mdash; Target Tracking</h2>
+  <p class="section-meta">Shaded band = pre-draft target range &middot; Dashed line = model value (toggle-aware) &middot; Large dot = price paid</p>
+  <p class="narrative">
+    For each Gusteroids acquisition, the <strong>shaded band</strong> shows the pre-draft target-to-max
+    range, the <strong>dashed line</strong> is the model value (which shifts under split pool for pitchers),
+    and the large dot is the price paid — teal if at or under model value, rose if above.
+    <br><br>
+    Under <strong>single pool</strong>, the pitching staff looks strong: Gilbert, Kirby, Pepiot, and
+    Suárez all sit at or below the dashed model-value line. Toggle to <strong>split pool</strong> and
+    the dashed lines shift left for all four starters — Gilbert from $31.8 to $24.4, Kirby from $27.8
+    to $21.3, Pepiot from $22.5 to $17.2, Suárez from $20.8 to $15.9. Under split pool, only Suárez
+    (+$1.9) and Pepiot (+$0.2) remain clearly in the teal zone; Gilbert (-$5.6) and Kirby (-$3.7)
+    flip rose. The pre-draft target bands are unchanged — Gusteroids set appropriate targets — but
+    the model value baseline moves out from under them.
+    <br><br>
+    The hitter side tells a more nuanced story across the two models. <strong>Corey Seager</strong>
+    improves slightly (-$8.4 single → -$4.8 split) because hitter values rise under split pool, but
+    he remains the largest single overpay. <strong>Steven Kwan</strong> nearly reaches break-even under
+    split pool (-$3.7 → -$0.4). <strong>Willson Contreras</strong> flips from small deficit to slight
+    surplus (-$2.2 → +$0.7). This pattern — hitters looking incrementally better under split pool —
+    is consistent across the league, not unique to Gusteroids.
+    <span class="callout">
+      <strong>The practical takeaway for future auctions:</strong> the pre-draft target ranges here were
+      built on single-pool values, which inflated SP targets slightly and deflated hitter targets slightly.
+      Rebuilding targets on split-pool values in 2027 would mean lower ceilings for starting pitchers
+      and somewhat higher ceilings for equivalent hitters — pushing the bidding strategy closer to
+      where the market actually settles.
+    </span>
+  </p>
+  <div class="filter-bar">
+    <span class="filter-label">Valuation model:</span>
+    <div class="toggle-pill" id="gust-toggle">
+      <button class="tpill active" data-mode="single" onclick="setModeGust('single')">Single Pool</button>
+      <button class="tpill" data-mode="split" onclick="setModeGust('split')">Split Pool</button>
+    </div>
+  </div>
+  <div class="chart-wrap" id="gusteroids-chart"></div>
+</section>
+
+<hr class="divider">
+
+<!-- SYNTHESIS -->
+<section id="s-synthesis">
+  <h2>Synthesis &mdash; What the Model Difference Tells Us</h2>
+  <p class="narrative" style="margin-bottom:22px">
+    Taken together, the two valuation frameworks converge on a few durable conclusions and diverge on
+    one major one. Here's what to carry forward.
+  </p>
+  <dl class="synthesis-grid">
+    <div class="synthesis-item">
+      <dt>Overpaying for elite hitters is universal and model-independent</dt>
+      <dd>The top-of-market premium on players like Ramírez, Henderson, and Langford is
+      consistent across both models. The scarcity premium on proven fantasy stars isn't a
+      modeling artifact — it's a real market dynamic. Budgeting extra for the one or two
+      players you must have is rational; expecting to win those auctions near model is not.</dd>
+    </div>
+    <div class="synthesis-item">
+      <dt>SP "bargains" are largely a single-pool illusion</dt>
+      <dd>Under single pool, nearly every SP in the auction looks like good value. Under split
+      pool, SPs price at 0.99× — essentially perfectly efficient. The market as a whole priced
+      starting pitching correctly; it was the single-pool model that was off. Future SP target
+      bids built on single-pool valuations will be set too high relative to where the market settles.</dd>
+    </div>
+    <div class="synthesis-item">
+      <dt>Relief pitching is the one genuine market inefficiency</dt>
+      <dd>RP is expensive in both models (1.61× single, 2.09× split) and the premium is larger
+      under the more accurate split-pool framework. Save upside is systematically overpriced.
+      A disciplined closer strategy — setting hard max bids regardless of how "available" a
+      closer seems — is supported by the data across multiple years and both valuation methods.</dd>
+    </div>
+    <div class="synthesis-item">
+      <dt>The league's hitter/pitcher split is shifting</dt>
+      <dd>Historical spending fell from 66% on hitters in 2019 to 53% in 2025 before bouncing
+      to 61% in 2026. The split-pool calibration used here (61/39) should be treated as a
+      snapshot, not a constant. If the trend toward pitching spend resumes, the "correct"
+      split-pool baseline will shift, and pitcher values will need to be recalibrated downward further.</dd>
+    </div>
+    <div class="synthesis-item">
+      <dt>Team surplus rankings are sensitive to model choice</dt>
+      <dd>Gusteroids: #1 single → #6 split. R&amp;R: #3 single → #1 split. Kerry &amp; Mitch:
+      #6 single → #2 split. A pitching-heavy auction strategy looks excellent under single pool
+      and merely average under split pool. The honest read is that Gusteroids executed well
+      within a defensible plan — but shouldn't assume surplus that may reflect model choice
+      more than genuine market edge.</dd>
+    </div>
+    <div class="synthesis-item">
+      <dt>Split pool should be the default for target-setting</dt>
+      <dd>Because split pool is calibrated to how the market actually distributes dollars, it
+      will produce more accurate bid guidance. Single pool remains useful as a cross-check and
+      for understanding relative player values within each position group. For 2027 auction
+      prep, build primary targets on split-pool values and use single-pool as a sanity check
+      on relative rankings — not absolute bid ceilings.</dd>
+    </div>
+  </dl>
+</section>
+
+<hr class="divider">
+
+<!-- GLOSSARY -->
+<section id="s-glossary">
+  <h2>Glossary</h2>
+  <p class="narrative" style="margin-bottom:0">Key terms and calculations used throughout this report.</p>
+  <dl class="glossary-grid">
+    <div class="glossary-item">
+      <dt>Single Pool Valuation</dt>
+      <dd>All players share one dollars-per-PAR rate ($4.06 this year). Simple but tends to over-value pitchers relative to how the market actually spends, because it implicitly assumes ~50% of auction dollars go to pitching when the historical league average is closer to 39–47%.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>Split Pool Valuation</dt>
+      <dd>The total budget is divided into separate hitter (61%) and pitcher (39%) pools based on Moonlight Graham's historical spending. Hitters: $5.06/PAR; pitchers: $3.11/PAR. Aligns model values with revealed market preferences and is the recommended baseline for target-setting.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>Model Value / Dollar Value</dt>
+      <dd>The estimated auction worth of a player derived from ATC projected stats → SGP → dollars. A $25 model value means the player is projected to contribute ~$25 of standings gains over a full season. The specific dollar figure changes depending on which pool method is used.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>ATC Projections</dt>
+      <dd>Aggregated The Computer — a composite projection system blending multiple public forecast models. Pulled from FanGraphs and used as the statistical backbone for all values here.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>SGP (Standings Gain Points)</dt>
+      <dd>A framework that converts projected stats into expected standings-point gains across all ten categories. Denominators are calibrated to Moonlight Graham's historical standings, making values league-specific rather than generic.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>Surplus</dt>
+      <dd>Model value minus price paid. Positive = bargain; negative = premium above model. Changes depending on which valuation model is selected. Does not account for team-specific roster context (see MSP).</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>MSP (Marginal Standings Points)</dt>
+      <dd>A team-specific targeting metric that asks what a player is worth to a specific team given their keeper core. A player who fills a category weakness is worth more; one who piles onto a strength is worth less. Used to set Gusteroids' pre-draft targets.</dd>
+    </div>
+    <div class="glossary-item">
+      <dt>Keeper Inflation</dt>
+      <dd>Retained players leave the auction pool but teams keep their full $260 budgets, concentrating dollars on fewer available players. The 2026 league had 61% of total rosters tied up in keepers before the auction, contributing to the across-the-board overpays visible in the scatter.</dd>
+    </div>
+  </dl>
+</section>
+
+</div>
+<div class="tooltip" id="tt"></div>
+
+<script>
+const DATA = {"players": [{"nom": 1, "player": "Andr\u00e9s Gim\u00e9nez", "team": "Thunder & Lightning", "price": 14, "timestamp": "19:44:22", "ts_min": 44.4, "pos_type": "hitter", "position": "2B", "mlb_team": "TOR", "dollar_value": 10.1, "surplus": -3.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 12.6, "split_surplus": -1.4}, {"nom": 2, "player": "Andr\u00e9s Mu\u00f1oz", "team": "Thunder & Lightning", "price": 34, "timestamp": "19:46:07", "ts_min": 46.1, "pos_type": "pitcher", "position": "RP", "mlb_team": "SEA", "dollar_value": 22.2, "surplus": -11.8, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 17.0, "split_surplus": -17.0}, {"nom": 3, "player": "Jos\u00e9 Ram\u00edrez", "team": "Kerry & Mitch", "price": 48, "timestamp": "19:47:16", "ts_min": 47.3, "pos_type": "hitter", "position": "3B", "mlb_team": "CLE", "dollar_value": 32.4, "surplus": -15.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 40.4, "split_surplus": -7.6}, {"nom": 4, "player": "Luis Castillo", "team": "Kerry & Mitch", "price": 16, "timestamp": "19:48:31", "ts_min": 48.5, "pos_type": "pitcher", "position": "SP", "mlb_team": "SEA", "dollar_value": 22.5, "surplus": 6.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 17.3, "split_surplus": 1.3}, {"nom": 5, "player": "Wyatt Langford", "team": "Dancing With Dingos", "price": 35, "timestamp": "19:49:30", "ts_min": 49.5, "pos_type": "hitter", "position": "OF", "mlb_team": "TEX", "dollar_value": 21.6, "surplus": -13.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 26.9, "split_surplus": -8.1}, {"nom": 6, "player": "Cal Raleigh", "team": "Kosher Hogs", "price": 30, "timestamp": "19:50:38", "ts_min": 50.6, "pos_type": "hitter", "position": "C", "mlb_team": "SEA", "dollar_value": 22.0, "surplus": -8.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 27.5, "split_surplus": -2.5}, {"nom": 7, "player": "George Kirby", "team": "Gusteroids", "price": 25, "timestamp": "19:52:09", "ts_min": 52.1, "pos_type": "pitcher", "position": "SP", "mlb_team": "SEA", "dollar_value": 27.8, "surplus": 2.8, "pre_tgt": 26.0, "pre_max": 38.0, "live_tgt": 25.0, "live_max": 36.0, "msp": 5.0, "auction_value": 20.6, "split_dollar_value": 21.3, "split_surplus": -3.7}, {"nom": 8, "player": "Framber Valdez", "team": "Mean Machine", "price": 23, "timestamp": "19:53:54", "ts_min": 53.9, "pos_type": "pitcher", "position": "SP", "mlb_team": "DET", "dollar_value": 28.3, "surplus": 5.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 21.7, "split_surplus": -1.3}, {"nom": 9, "player": "Ryan Helsley", "team": "On a Bender", "price": 23, "timestamp": "19:54:54", "ts_min": 54.9, "pos_type": "pitcher", "position": "RP", "mlb_team": "BAL", "dollar_value": 16.7, "surplus": -6.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 12.8, "split_surplus": -10.2}, {"nom": 10, "player": "Josh Hader", "team": "HAMMERHEADS", "price": 19, "timestamp": "19:55:50", "ts_min": 55.8, "pos_type": "pitcher", "position": "RP", "mlb_team": "HOU", "dollar_value": 12.6, "surplus": -6.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.7, "split_surplus": -9.3}, {"nom": 11, "player": "Gunnar Henderson", "team": "Kerry & Mitch", "price": 40, "timestamp": "19:56:46", "ts_min": 56.8, "pos_type": "hitter", "position": "SS", "mlb_team": "BAL", "dollar_value": 27.7, "surplus": -12.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 34.6, "split_surplus": -5.4}, {"nom": 12, "player": "Logan Gilbert", "team": "Gusteroids", "price": 30, "timestamp": "19:58:18", "ts_min": 58.3, "pos_type": "pitcher", "position": "SP", "mlb_team": "SEA", "dollar_value": 31.8, "surplus": 1.8, "pre_tgt": 30.0, "pre_max": 44.0, "live_tgt": 34.0, "live_max": 52.0, "msp": 6.0, "auction_value": 23.6, "split_dollar_value": 24.4, "split_surplus": -5.6}, {"nom": 13, "player": "Pete Alonso", "team": "Kosher Hogs", "price": 34, "timestamp": "19:59:18", "ts_min": 59.3, "pos_type": "hitter", "position": "1B", "mlb_team": "BAL", "dollar_value": 21.4, "surplus": -12.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 26.6, "split_surplus": -7.4}, {"nom": 14, "player": "Carlos Est\u00e9vez", "team": "Mean Machine", "price": 20, "timestamp": "20:01:11", "ts_min": 61.2, "pos_type": "pitcher", "position": "RP", "mlb_team": "KCR", "dollar_value": 12.2, "surplus": -7.8, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.3, "split_surplus": -10.7}, {"nom": 15, "player": "MacKenzie Gore", "team": "HAMMERHEADS", "price": 14, "timestamp": "20:02:37", "ts_min": 62.6, "pos_type": "pitcher", "position": "SP", "mlb_team": "TEX", "dollar_value": 20.1, "surplus": 6.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 15.4, "split_surplus": 1.4}, {"nom": 16, "player": "Jose Altuve", "team": "On a Bender", "price": 16, "timestamp": "20:03:43", "ts_min": 63.7, "pos_type": "hitter", "position": "2B", "mlb_team": "HOU", "dollar_value": 15.5, "surplus": -0.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 19.3, "split_surplus": 3.3}, {"nom": 17, "player": "Maikel Garcia", "team": "On a Bender", "price": 34, "timestamp": "20:05:15", "ts_min": 65.2, "pos_type": "hitter", "position": "3B", "mlb_team": "KCR", "dollar_value": 19.7, "surplus": -14.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 24.5, "split_surplus": -9.5}, {"nom": 18, "player": "Gleyber Torres", "team": "R&R", "price": 14, "timestamp": "20:06:57", "ts_min": 67.0, "pos_type": "hitter", "position": "2B", "mlb_team": "DET", "dollar_value": 11.5, "surplus": -2.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 14.3, "split_surplus": 0.3}, {"nom": 19, "player": "Dylan Cease", "team": "Kerry & Mitch", "price": 21, "timestamp": "20:08:01", "ts_min": 68.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "TOR", "dollar_value": 26.7, "surplus": 5.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 20.5, "split_surplus": -0.5}, {"nom": 20, "player": "Corey Seager", "team": "Gusteroids", "price": 23, "timestamp": "20:09:10", "ts_min": 69.2, "pos_type": "hitter", "position": "SS", "mlb_team": "TEX", "dollar_value": 14.6, "surplus": -8.4, "pre_tgt": 21.0, "pre_max": 21.0, "live_tgt": 22.0, "live_max": 23.0, "msp": 3.0, "auction_value": 18.5, "split_dollar_value": 18.2, "split_surplus": -4.8}, {"nom": 21, "player": "Nathan Eovaldi", "team": "R&R", "price": 22, "timestamp": "20:10:33", "ts_min": 70.5, "pos_type": "pitcher", "position": "SP", "mlb_team": "TEX", "dollar_value": 23.1, "surplus": 1.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 17.7, "split_surplus": -4.3}, {"nom": 22, "player": "Sonny Gray", "team": "Shrooms", "price": 19, "timestamp": "20:12:00", "ts_min": 72.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "BOS", "dollar_value": 26.0, "surplus": 7.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 19.9, "split_surplus": 0.9}, {"nom": 23, "player": "Yordan Alvarez", "team": "HAMMERHEADS", "price": 31, "timestamp": "20:13:27", "ts_min": 73.5, "pos_type": "hitter", "position": "DH/OF", "mlb_team": "HOU", "dollar_value": 20.1, "surplus": -10.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 25.1, "split_surplus": -5.9}, {"nom": 24, "player": "Shea Langeliers", "team": "Shrooms", "price": 26, "timestamp": "20:14:27", "ts_min": 74.5, "pos_type": "hitter", "position": "C", "mlb_team": "ATH", "dollar_value": 14.8, "surplus": -11.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 18.5, "split_surplus": -7.5}, {"nom": 25, "player": "Riley Greene", "team": "Dancing With Dingos", "price": 29, "timestamp": "20:15:20", "ts_min": 75.3, "pos_type": "hitter", "position": "OF", "mlb_team": "DET", "dollar_value": 17.7, "surplus": -11.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 22.1, "split_surplus": -6.9}, {"nom": 26, "player": "Willson Contreras", "team": "Gusteroids", "price": 14, "timestamp": "20:16:37", "ts_min": 76.6, "pos_type": "hitter", "position": "C", "mlb_team": "BOS", "dollar_value": 11.8, "surplus": -2.2, "pre_tgt": 14.0, "pre_max": 14.0, "live_tgt": 21.0, "live_max": 24.0, "msp": 1.0, "auction_value": 14.9, "split_dollar_value": 14.7, "split_surplus": 0.7}, {"nom": 27, "player": "Steven Kwan", "team": "Gusteroids", "price": 17, "timestamp": "20:18:07", "ts_min": 78.1, "pos_type": "hitter", "position": "OF", "mlb_team": "CLE", "dollar_value": 13.3, "surplus": -3.7, "pre_tgt": 19.0, "pre_max": 19.0, "live_tgt": 23.0, "live_max": 25.0, "msp": 3.0, "auction_value": 16.9, "split_dollar_value": 16.6, "split_surplus": -0.4}, {"nom": 28, "player": "Jack Flaherty", "team": "Shrooms", "price": 15, "timestamp": "20:20:07", "ts_min": 80.1, "pos_type": "pitcher", "position": "SP", "mlb_team": "DET", "dollar_value": 20.2, "surplus": 5.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 15.5, "split_surplus": 0.5}, {"nom": 29, "player": "Ranger Suarez", "team": "Gusteroids", "price": 14, "timestamp": "20:21:45", "ts_min": 81.8, "pos_type": "pitcher", "position": "SP", "mlb_team": "BOS", "dollar_value": 20.8, "surplus": 6.8, "pre_tgt": 18.0, "pre_max": 27.0, "live_tgt": 21.0, "live_max": 33.0, "msp": 3.0, "auction_value": 15.4, "split_dollar_value": 15.9, "split_surplus": 1.9}, {"nom": 30, "player": "Josh Naylor", "team": "Kosher Hogs", "price": 25, "timestamp": "20:23:07", "ts_min": 83.1, "pos_type": "hitter", "position": "1B", "mlb_team": "SEA", "dollar_value": 19.9, "surplus": -5.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 24.8, "split_surplus": -0.2}, {"nom": 31, "player": "Yainer Diaz", "team": "Shrooms", "price": 16, "timestamp": "20:25:09", "ts_min": 85.2, "pos_type": "hitter", "position": "C/DH", "mlb_team": "HOU", "dollar_value": 8.9, "surplus": -7.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 11.1, "split_surplus": -4.9}, {"nom": 32, "player": "Christian Walker", "team": "Mean Machine", "price": 12, "timestamp": "20:26:26", "ts_min": 86.4, "pos_type": "hitter", "position": "1B", "mlb_team": "HOU", "dollar_value": 10.3, "surplus": -1.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 12.8, "split_surplus": 0.8}, {"nom": 33, "player": "Taylor Ward", "team": "Kerry & Mitch", "price": 16, "timestamp": "20:27:14", "ts_min": 87.2, "pos_type": "hitter", "position": "OF", "mlb_team": "BAL", "dollar_value": 15.2, "surplus": -0.8, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 18.9, "split_surplus": 2.9}, {"nom": 34, "player": "Carlos Rod\u00f3n", "team": "R&R", "price": 13, "timestamp": "20:28:21", "ts_min": 88.3, "pos_type": "pitcher", "position": "SP", "mlb_team": "NYY", "dollar_value": 17.7, "surplus": 4.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 13.6, "split_surplus": 0.6}, {"nom": 35, "player": "Tatsuya Imai", "team": "On a Bender", "price": 10, "timestamp": "20:29:12", "ts_min": 89.2, "pos_type": "pitcher", "position": "SP", "mlb_team": "HOU", "dollar_value": 10.9, "surplus": 0.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 8.3, "split_surplus": -1.7}, {"nom": 36, "player": "Salvador Perez", "team": "R&R", "price": 16, "timestamp": "20:30:55", "ts_min": 90.9, "pos_type": "hitter", "position": "C", "mlb_team": "KCR", "dollar_value": 12.1, "surplus": -3.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 15.1, "split_surplus": -0.9}, {"nom": 37, "player": "Jordan Leasure", "team": "Kerry & Mitch", "price": 4, "timestamp": "20:31:36", "ts_min": 91.6, "pos_type": "pitcher", "position": "RP", "mlb_team": "CHW", "dollar_value": 0.0, "surplus": -4.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -4}, {"nom": 38, "player": "Jordan Westburg", "team": "HAMMERHEADS", "price": 11, "timestamp": "20:33:08", "ts_min": 93.1, "pos_type": "hitter", "position": "2B/3B", "mlb_team": "BAL", "dollar_value": 4.5, "surplus": -6.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 5.6, "split_surplus": -5.4}, {"nom": 39, "player": "Robert Garcia", "team": "Thunder & Lightning", "price": 10, "timestamp": "20:34:39", "ts_min": 94.7, "pos_type": "pitcher", "position": "RP", "mlb_team": "TEX", "dollar_value": 7.9, "surplus": -2.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.1, "split_surplus": -3.9}, {"nom": 40, "player": "Adley Rutschman", "team": "Thunder & Lightning", "price": 15, "timestamp": "20:35:51", "ts_min": 95.8, "pos_type": "hitter", "position": "C/DH", "mlb_team": "BAL", "dollar_value": 6.6, "surplus": -8.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 8.2, "split_surplus": -6.8}, {"nom": 41, "player": "Brandon Nimmo", "team": "Shrooms", "price": 14, "timestamp": "20:37:05", "ts_min": 97.1, "pos_type": "hitter", "position": "OF", "mlb_team": "TEX", "dollar_value": 14.1, "surplus": 0.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 17.6, "split_surplus": 3.6}, {"nom": 42, "player": "Cedric Mullins", "team": "R&R", "price": 13, "timestamp": "20:38:37", "ts_min": 98.6, "pos_type": "hitter", "position": "OF", "mlb_team": "TBR", "dollar_value": 6.6, "surplus": -6.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 8.2, "split_surplus": -4.8}, {"nom": 43, "player": "Ryan Pepiot", "team": "Gusteroids", "price": 17, "timestamp": "20:39:38", "ts_min": 99.6, "pos_type": "pitcher", "position": "SP", "mlb_team": "TBR", "dollar_value": 22.5, "surplus": 5.5, "pre_tgt": 22.0, "pre_max": 32.0, "live_tgt": 17.0, "live_max": 22.0, "msp": 5.0, "auction_value": 16.7, "split_dollar_value": 17.2, "split_surplus": 0.2}, {"nom": 44, "player": "Kazuma Okamoto", "team": "Gusteroids", "price": 12, "timestamp": "20:41:04", "ts_min": 101.1, "pos_type": "hitter", "position": "3B", "mlb_team": "TOR", "dollar_value": 8.4, "surplus": -3.6, "pre_tgt": 8.0, "pre_max": 8.0, "live_tgt": 16.0, "live_max": 18.0, "msp": 0.0, "auction_value": 10.7, "split_dollar_value": 10.5, "split_surplus": -1.5}, {"nom": 45, "player": "Caleb Durbin", "team": "Shrooms", "price": 16, "timestamp": "20:47:53", "ts_min": 107.9, "pos_type": "hitter", "position": "3B", "mlb_team": "BOS", "dollar_value": 10.8, "surplus": -5.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 13.5, "split_surplus": -2.5}, {"nom": 46, "player": "Triston Casas", "team": "R&R", "price": 3, "timestamp": "20:49:20", "ts_min": 109.3, "pos_type": "hitter", "position": "1B", "mlb_team": "BOS", "dollar_value": 0.0, "surplus": -3.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -3}, {"nom": 47, "player": "Mike Trout", "team": "Dancing With Dingos", "price": 16, "timestamp": "20:52:03", "ts_min": 112.0, "pos_type": "hitter", "position": "OF", "mlb_team": "LAA", "dollar_value": 8.4, "surplus": -7.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 10.5, "split_surplus": -5.5}, {"nom": 48, "player": "Matt Wallner", "team": "Shrooms", "price": 13, "timestamp": "20:52:20", "ts_min": 112.3, "pos_type": "hitter", "position": "OF", "mlb_team": "MIN", "dollar_value": 7.5, "surplus": -5.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.3, "split_surplus": -3.7}, {"nom": 49, "player": "Lane Thomas", "team": "Thunder & Lightning", "price": 5, "timestamp": "20:53:34", "ts_min": 113.6, "pos_type": "hitter", "position": "OF", "mlb_team": "KCR", "dollar_value": 3.0, "surplus": -2.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 3.7, "split_surplus": -1.3}, {"nom": 50, "player": "Royce Lewis", "team": "HAMMERHEADS", "price": 11, "timestamp": "20:55:07", "ts_min": 115.1, "pos_type": "hitter", "position": "3B", "mlb_team": "MIN", "dollar_value": 8.9, "surplus": -2.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 11.1, "split_surplus": 0.1}, {"nom": 51, "player": "Kumar Rocker", "team": "Mean Machine", "price": 1, "timestamp": "20:56:02", "ts_min": 116.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "TEX", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 52, "player": "Kenley Jansen", "team": "Gusteroids", "price": 15, "timestamp": "20:56:41", "ts_min": 116.7, "pos_type": "pitcher", "position": "RP", "mlb_team": "DET", "dollar_value": 9.1, "surplus": -5.9, "pre_tgt": 10.0, "pre_max": 15.0, "live_tgt": 12.0, "live_max": 19.0, "msp": 3.0, "auction_value": 6.7, "split_dollar_value": 6.9, "split_surplus": -8.1}, {"nom": 53, "player": "Will Vest", "team": "Kosher Hogs", "price": 6, "timestamp": "21:06:39", "ts_min": 126.7, "pos_type": "pitcher", "position": "RP", "mlb_team": "DET", "dollar_value": 3.6, "surplus": -2.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.7, "split_surplus": -3.3}, {"nom": 54, "player": "Brendan Donovan", "team": "HAMMERHEADS", "price": 6, "timestamp": "21:07:56", "ts_min": 127.9, "pos_type": "hitter", "position": "2B/OF", "mlb_team": "SEA", "dollar_value": 7.9, "surplus": 1.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.9, "split_surplus": 3.9}, {"nom": 55, "player": "Dylan Beavers", "team": "HAMMERHEADS", "price": 10, "timestamp": "21:09:01", "ts_min": 129.0, "pos_type": "hitter", "position": "OF", "mlb_team": "BAL", "dollar_value": 1.8, "surplus": -8.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.3, "split_surplus": -7.7}, {"nom": 56, "player": "Jorge Soler", "team": "HAMMERHEADS", "price": 5, "timestamp": "21:10:38", "ts_min": 130.6, "pos_type": "hitter", "position": "DH/OF", "mlb_team": "LAA", "dollar_value": 3.7, "surplus": -1.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 4.7, "split_surplus": -0.3}, {"nom": 57, "player": "Hogan Harris", "team": "Shrooms", "price": 5, "timestamp": "21:11:54", "ts_min": 131.9, "pos_type": "pitcher", "position": "RP", "mlb_team": "ATH", "dollar_value": 0.0, "surplus": -5.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -5}, {"nom": 58, "player": "Gavin Williams", "team": "Mean Machine", "price": 17, "timestamp": "21:14:10", "ts_min": 134.2, "pos_type": "pitcher", "position": "SP", "mlb_team": "CLE", "dollar_value": 17.6, "surplus": 0.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 13.5, "split_surplus": -3.5}, {"nom": 59, "player": "Nolan Schanuel", "team": "Thunder & Lightning", "price": 14, "timestamp": "21:15:35", "ts_min": 135.6, "pos_type": "hitter", "position": "1B", "mlb_team": "LAA", "dollar_value": 8.1, "surplus": -5.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 10.1, "split_surplus": -3.9}, {"nom": 60, "player": "Jake Burger", "team": "HAMMERHEADS", "price": 13, "timestamp": "21:16:43", "ts_min": 136.7, "pos_type": "hitter", "position": "1B/3B", "mlb_team": "TEX", "dollar_value": 9.6, "surplus": -3.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 12.0, "split_surplus": -1.0}, {"nom": 61, "player": "Tanner Bibee", "team": "Dancing With Dingos", "price": 12, "timestamp": "21:17:59", "ts_min": 138.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "CLE", "dollar_value": 21.5, "surplus": 9.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 16.4, "split_surplus": 4.4}, {"nom": 62, "player": "Kerry Carpenter", "team": "Dancing With Dingos", "price": 14, "timestamp": "21:18:55", "ts_min": 138.9, "pos_type": "hitter", "position": "DH/OF", "mlb_team": "DET", "dollar_value": 9.3, "surplus": -4.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 11.6, "split_surplus": -2.4}, {"nom": 63, "player": "Rhys Hoskins", "team": "Thunder & Lightning", "price": 3, "timestamp": "21:20:30", "ts_min": 140.5, "pos_type": "hitter", "position": "1B", "mlb_team": "CLE", "dollar_value": 0.0, "surplus": -3.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -3}, {"nom": 64, "player": "Anthony Volpe", "team": "Dancing With Dingos", "price": 11, "timestamp": "21:21:26", "ts_min": 141.4, "pos_type": "hitter", "position": "SS", "mlb_team": "NYY", "dollar_value": 6.1, "surplus": -4.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 7.7, "split_surplus": -3.3}, {"nom": 65, "player": "Giancarlo Stanton", "team": "On a Bender", "price": 7, "timestamp": "21:22:37", "ts_min": 142.6, "pos_type": "hitter", "position": "DH/OF", "mlb_team": "NYY", "dollar_value": 3.8, "surplus": -3.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 4.8, "split_surplus": -2.2}, {"nom": 66, "player": "Kody Clemens", "team": "Kerry & Mitch", "price": 5, "timestamp": "21:23:42", "ts_min": 143.7, "pos_type": "hitter", "position": "1B", "mlb_team": "MIN", "dollar_value": 0.0, "surplus": -5.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -5}, {"nom": 67, "player": "Mick Abel", "team": "HAMMERHEADS", "price": 5, "timestamp": "21:25:24", "ts_min": 145.4, "pos_type": "pitcher", "position": "SP", "mlb_team": "MIN", "dollar_value": 1.0, "surplus": -4.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.0, "split_surplus": -4.0}, {"nom": 68, "player": "Bo Naylor", "team": "Thunder & Lightning", "price": 6, "timestamp": "21:26:25", "ts_min": 146.4, "pos_type": "hitter", "position": "C", "mlb_team": "CLE", "dollar_value": 1.3, "surplus": -4.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.6, "split_surplus": -4.4}, {"nom": 69, "player": "Bryce Miller", "team": "HAMMERHEADS", "price": 7, "timestamp": "21:28:00", "ts_min": 148.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "SEA", "dollar_value": 12.3, "surplus": 5.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.4, "split_surplus": 2.4}, {"nom": 70, "player": "Jonathan India", "team": "Dancing With Dingos", "price": 2, "timestamp": "21:28:48", "ts_min": 148.8, "pos_type": "hitter", "position": "2B", "mlb_team": "KCR", "dollar_value": 3.3, "surplus": 1.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 4.1, "split_surplus": 2.1}, {"nom": 71, "player": "Grant Taylor", "team": "Kerry & Mitch", "price": 10, "timestamp": "21:29:52", "ts_min": 149.9, "pos_type": "pitcher", "position": "RP", "mlb_team": "CHW", "dollar_value": 6.1, "surplus": -3.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 4.7, "split_surplus": -5.3}, {"nom": 72, "player": "Bryan Abreu", "team": "HAMMERHEADS", "price": 17, "timestamp": "21:31:05", "ts_min": 151.1, "pos_type": "pitcher", "position": "RP", "mlb_team": "HOU", "dollar_value": 8.7, "surplus": -8.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.7, "split_surplus": -10.3}, {"nom": 73, "player": "Taylor Rogers", "team": "Mean Machine", "price": 8, "timestamp": "21:32:55", "ts_min": 152.9, "pos_type": "pitcher", "position": "RP", "mlb_team": "MIN", "dollar_value": 2.8, "surplus": -5.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.2, "split_surplus": -5.8}, {"nom": 74, "player": "Chase Meidroth", "team": "On a Bender", "price": 10, "timestamp": "21:34:30", "ts_min": 154.5, "pos_type": "hitter", "position": "2B/SS", "mlb_team": "CHW", "dollar_value": 4.3, "surplus": -5.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 5.4, "split_surplus": -4.6}, {"nom": 75, "player": "Zach McKinstry", "team": "R&R", "price": 3, "timestamp": "21:35:54", "ts_min": 155.9, "pos_type": "hitter", "position": "3B/OF", "mlb_team": "DET", "dollar_value": 1.2, "surplus": -1.8, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.5, "split_surplus": -1.5}, {"nom": 76, "player": "Gabriel Arias", "team": "Shrooms", "price": 1, "timestamp": "21:36:30", "ts_min": 156.5, "pos_type": "hitter", "position": "SS", "mlb_team": "CLE", "dollar_value": 1.0, "surplus": 0.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.0, "split_surplus": 0.0}, {"nom": 77, "player": "Brooks Lee", "team": "HAMMERHEADS", "price": 8, "timestamp": "21:38:03", "ts_min": 158.1, "pos_type": "hitter", "position": "3B/SS", "mlb_team": "MIN", "dollar_value": 4.0, "surplus": -4.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 5.0, "split_surplus": -3.0}, {"nom": 78, "player": "Ryan Jeffers", "team": "Gusteroids", "price": 7, "timestamp": "21:39:19", "ts_min": 159.3, "pos_type": "hitter", "position": "C", "mlb_team": "MIN", "dollar_value": 4.0, "surplus": -3.0, "pre_tgt": 4.0, "pre_max": 4.0, "live_tgt": 6.0, "live_max": 6.0, "msp": 0.0, "auction_value": 5.1, "split_dollar_value": 5.0, "split_surplus": -2.0}, {"nom": 79, "player": "Cam Smith", "team": "Kosher Hogs", "price": 14, "timestamp": "21:40:37", "ts_min": 160.6, "pos_type": "hitter", "position": "OF", "mlb_team": "HOU", "dollar_value": 2.8, "surplus": -11.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 3.5, "split_surplus": -10.5}, {"nom": 80, "player": "J.P. Crawford", "team": "Gusteroids", "price": 4, "timestamp": "21:42:08", "ts_min": 162.1, "pos_type": "hitter", "position": "SS", "mlb_team": "SEA", "dollar_value": 3.8, "surplus": -0.2, "pre_tgt": 4.0, "pre_max": 4.0, "live_tgt": 7.0, "live_max": 8.0, "msp": -1.0, "auction_value": 4.8, "split_dollar_value": 4.7, "split_surplus": 0.7}, {"nom": 81, "player": "Cody Ponce", "team": "Dancing With Dingos", "price": 9, "timestamp": "21:43:51", "ts_min": 163.8, "pos_type": "pitcher", "position": "SP", "mlb_team": "TOR", "dollar_value": 12.2, "surplus": 3.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 9.3, "split_surplus": 0.3}, {"nom": 82, "player": "Luisangel Acu\u00f1a", "team": "HAMMERHEADS", "price": 8, "timestamp": "21:46:22", "ts_min": 166.4, "pos_type": "hitter", "position": "2B", "mlb_team": "CHW", "dollar_value": 1.5, "surplus": -6.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.9, "split_surplus": -6.1}, {"nom": 83, "player": "Logan O'Hoppe", "team": "Dancing With Dingos", "price": 8, "timestamp": "21:47:49", "ts_min": 167.8, "pos_type": "hitter", "position": "C", "mlb_team": "LAA", "dollar_value": 2.1, "surplus": -5.9, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.6, "split_surplus": -5.4}, {"nom": 84, "player": "Carlos Narv\u00e1ez", "team": "On a Bender", "price": 3, "timestamp": "21:49:15", "ts_min": 169.2, "pos_type": "hitter", "position": "C", "mlb_team": "BOS", "dollar_value": 0.0, "surplus": -3.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -3}, {"nom": 85, "player": "Mike Burrows", "team": "Dancing With Dingos", "price": 7, "timestamp": "21:50:42", "ts_min": 170.7, "pos_type": "pitcher", "position": "SP", "mlb_team": "HOU", "dollar_value": 8.1, "surplus": 1.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.2, "split_surplus": -0.8}, {"nom": 86, "player": "Ryan McMahon", "team": "Shrooms", "price": 3, "timestamp": "21:51:40", "ts_min": 171.7, "pos_type": "hitter", "position": "3B", "mlb_team": "NYY", "dollar_value": 1.0, "surplus": -2.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.3, "split_surplus": -1.7}, {"nom": 87, "player": "Josh Bell", "team": "R&R", "price": 5, "timestamp": "21:53:32", "ts_min": 173.5, "pos_type": "hitter", "position": "1B", "mlb_team": "MIN", "dollar_value": 6.5, "surplus": 1.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 8.0, "split_surplus": 3.0}, {"nom": 88, "player": "Josh Jung", "team": "Thunder & Lightning", "price": 8, "timestamp": "21:54:41", "ts_min": 174.7, "pos_type": "hitter", "position": "3B", "mlb_team": "TEX", "dollar_value": 5.5, "surplus": -2.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.9, "split_surplus": -1.1}, {"nom": 89, "player": "Edgar Quero", "team": "HAMMERHEADS", "price": 5, "timestamp": "21:56:09", "ts_min": 176.2, "pos_type": "hitter", "position": "C/DH", "mlb_team": "CHW", "dollar_value": 0.0, "surplus": -5.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -5}, {"nom": 90, "player": "Ryan Weathers", "team": "Kerry & Mitch", "price": 8, "timestamp": "21:57:04", "ts_min": 177.1, "pos_type": "pitcher", "position": "SP", "mlb_team": "NYY", "dollar_value": 8.6, "surplus": 0.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.6, "split_surplus": -1.4}, {"nom": 91, "player": "Zach Eflin", "team": "Dancing With Dingos", "price": 3, "timestamp": "21:58:44", "ts_min": 178.7, "pos_type": "pitcher", "position": "SP", "mlb_team": "BAL", "dollar_value": 9.6, "surplus": 6.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 7.3, "split_surplus": 4.3}, {"nom": 92, "player": "Austin Hays", "team": "Shrooms", "price": 9, "timestamp": "21:59:40", "ts_min": 179.7, "pos_type": "hitter", "position": "OF", "mlb_team": "CHW", "dollar_value": 3.5, "surplus": -5.5, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 4.4, "split_surplus": -4.6}, {"nom": 93, "player": "Matt Strahm", "team": "Dancing With Dingos", "price": 2, "timestamp": "22:00:29", "ts_min": 180.5, "pos_type": "pitcher", "position": "RP", "mlb_team": "KCR", "dollar_value": 1.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.0, "split_surplus": -1.0}, {"nom": 94, "player": "Denzel Clarke", "team": "On a Bender", "price": 5, "timestamp": "22:01:29", "ts_min": 181.5, "pos_type": "hitter", "position": "OF", "mlb_team": "ATH", "dollar_value": 1.0, "surplus": -4.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.0, "split_surplus": -4.0}, {"nom": 95, "player": "Isaac Collins", "team": "Kosher Hogs", "price": 4, "timestamp": "22:03:46", "ts_min": 183.8, "pos_type": "hitter", "position": "OF", "mlb_team": "KCR", "dollar_value": 1.9, "surplus": -2.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.4, "split_surplus": -1.6}, {"nom": 96, "player": "Tyler Rogers", "team": "R&R", "price": 6, "timestamp": "22:05:26", "ts_min": 185.4, "pos_type": "pitcher", "position": "RP", "mlb_team": "TOR", "dollar_value": 0.0, "surplus": -6.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -6}, {"nom": 97, "player": "Cole Young", "team": "Dancing With Dingos", "price": 3, "timestamp": "22:06:31", "ts_min": 186.5, "pos_type": "hitter", "position": "2B", "mlb_team": "SEA", "dollar_value": 0.0, "surplus": -3.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -3}, {"nom": 98, "player": "Drew Anderson", "team": "Thunder & Lightning", "price": 1, "timestamp": "22:07:30", "ts_min": 187.5, "pos_type": "pitcher", "position": "RP", "mlb_team": "DET", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 99, "player": "Connelly Early", "team": "HAMMERHEADS", "price": 10, "timestamp": "22:08:42", "ts_min": 188.7, "pos_type": "pitcher", "position": "RP", "mlb_team": "BOS", "dollar_value": 0.0, "surplus": -10.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -10}, {"nom": 100, "player": "Noah Cameron", "team": "On a Bender", "price": 2, "timestamp": "22:09:12", "ts_min": 189.2, "pos_type": "pitcher", "position": "SP", "mlb_team": "KCR", "dollar_value": 10.7, "surplus": 8.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 8.2, "split_surplus": 6.2}, {"nom": 101, "player": "Parker Messick", "team": "HAMMERHEADS", "price": 7, "timestamp": "22:10:40", "ts_min": 190.7, "pos_type": "pitcher", "position": "SP", "mlb_team": "CLE", "dollar_value": 7.0, "surplus": 0.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 5.4, "split_surplus": -1.6}, {"nom": 102, "player": "Kirby Yates", "team": "Gusteroids", "price": 3, "timestamp": "22:11:21", "ts_min": 191.3, "pos_type": "pitcher", "position": "RP", "mlb_team": "LAA", "dollar_value": 2.8, "surplus": -0.2, "pre_tgt": 4.0, "pre_max": 7.0, "live_tgt": 9.0, "live_max": 17.0, "msp": 2.0, "auction_value": 2.1, "split_dollar_value": 2.2, "split_surplus": -0.8}, {"nom": 103, "player": "Camilo Doval", "team": "R&R", "price": 2, "timestamp": "22:12:47", "ts_min": 192.8, "pos_type": "pitcher", "position": "RP", "mlb_team": "NYY", "dollar_value": 0.0, "surplus": -2.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -2}, {"nom": 104, "player": "Garrett Cleavinger", "team": "On a Bender", "price": 10, "timestamp": "22:13:49", "ts_min": 193.8, "pos_type": "pitcher", "position": "RP", "mlb_team": "TBR", "dollar_value": 4.4, "surplus": -5.6, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 3.4, "split_surplus": -6.6}, {"nom": 105, "player": "Javier B\u00e1ez", "team": "R&R", "price": 1, "timestamp": "22:14:50", "ts_min": 194.8, "pos_type": "hitter", "position": "SS", "mlb_team": "DET", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 106, "player": "Joey Cantillo", "team": "On a Bender", "price": 5, "timestamp": "22:15:58", "ts_min": 196.0, "pos_type": "pitcher", "position": "SP", "mlb_team": "CLE", "dollar_value": 9.4, "surplus": 4.4, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 7.2, "split_surplus": 2.2}, {"nom": 107, "player": "Kyle Higashioka", "team": "Kerry & Mitch", "price": 1, "timestamp": "22:17:31", "ts_min": 197.5, "pos_type": "hitter", "position": "C", "mlb_team": "TEX", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 108, "player": "Justin Verlander", "team": "Kosher Hogs", "price": 2, "timestamp": "22:18:54", "ts_min": 198.9, "pos_type": "pitcher", "position": "SP", "mlb_team": "DET", "dollar_value": 4.8, "surplus": 2.8, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 3.7, "split_surplus": 1.7}, {"nom": 109, "player": "Joey Loperfido", "team": "HAMMERHEADS", "price": 3, "timestamp": "22:20:37", "ts_min": 200.6, "pos_type": "hitter", "position": "OF", "mlb_team": "HOU", "dollar_value": 0.0, "surplus": -3.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -3}, {"nom": 110, "player": "Brayan Rocchio", "team": "Mean Machine", "price": 1, "timestamp": "22:23:13", "ts_min": 203.2, "pos_type": "hitter", "position": "SS", "mlb_team": "CLE", "dollar_value": 1.2, "surplus": 0.2, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 1.5, "split_surplus": 0.5}, {"nom": 111, "player": "Trevor Larnach", "team": "R&R", "price": 2, "timestamp": "22:28:40", "ts_min": 208.7, "pos_type": "hitter", "position": "DH/OF", "mlb_team": "MIN", "dollar_value": 1.7, "surplus": -0.3, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.1, "split_surplus": 0.1}, {"nom": 112, "player": "Keegan Akin", "team": "Kosher Hogs", "price": 1, "timestamp": "22:30:08", "ts_min": 210.1, "pos_type": "pitcher", "position": "RP", "mlb_team": "BAL", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 113, "player": "Jeff McNeil", "team": "On a Bender", "price": 5, "timestamp": "22:32:37", "ts_min": 212.6, "pos_type": "hitter", "position": "2B/OF", "mlb_team": "ATH", "dollar_value": 4.9, "surplus": -0.1, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 6.2, "split_surplus": 1.2}, {"nom": 114, "player": "Ben Joyce", "team": "On a Bender", "price": 8, "timestamp": "22:33:47", "ts_min": 213.8, "pos_type": "pitcher", "position": "RP", "mlb_team": "LAA", "dollar_value": 0.0, "surplus": -8.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -8}, {"nom": 115, "player": "Ryan Mountcastle", "team": "Kerry & Mitch", "price": 1, "timestamp": "22:34:20", "ts_min": 214.3, "pos_type": "hitter", "position": "1B", "mlb_team": "BAL", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 116, "player": "Grayson Rodriguez", "team": "Thunder & Lightning", "price": 1, "timestamp": "22:35:18", "ts_min": 215.3, "pos_type": "pitcher", "position": "SP", "mlb_team": "LAA", "dollar_value": 5.0, "surplus": 4.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 3.8, "split_surplus": 2.8}, {"nom": 117, "player": "Dominic Canzone", "team": "On a Bender", "price": 10, "timestamp": "22:36:36", "ts_min": 216.6, "pos_type": "hitter", "position": "OF", "mlb_team": "SEA", "dollar_value": 2.3, "surplus": -7.7, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 2.9, "split_surplus": -7.1}, {"nom": 118, "player": "Jedixson Paez", "team": "Mean Machine", "price": 1, "timestamp": "22:38:16", "ts_min": 218.3, "pos_type": "pitcher", "position": "RP", "mlb_team": "CHW", "dollar_value": 0.0, "surplus": -1.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -1}, {"nom": 119, "player": "Paul Goldschmidt", "team": "Mean Machine", "price": 2, "timestamp": "22:39:03", "ts_min": 219.1, "pos_type": "hitter", "position": "1B", "mlb_team": "NYY", "dollar_value": 0.0, "surplus": -2.0, "pre_tgt": null, "pre_max": null, "live_tgt": null, "live_max": null, "msp": null, "auction_value": null, "split_dollar_value": 0, "split_surplus": -2}], "teamSummary": {"Thunder & Lightning": {"auction_total": 111, "hitter_total": 65, "pitcher_total": 46, "count": 11, "surplus_total": -41.3, "players": [{"player": "Andr\u00e9s Gim\u00e9nez", "price": 14, "surplus": -3.9, "pos_type": "hitter", "position": "2B"}, {"player": "Andr\u00e9s Mu\u00f1oz", "price": 34, "surplus": -11.8, "pos_type": "pitcher", "position": "RP"}, {"player": "Robert Garcia", "price": 10, "surplus": -2.1, "pos_type": "pitcher", "position": "RP"}, {"player": "Adley Rutschman", "price": 15, "surplus": -8.4, "pos_type": "hitter", "position": "C/DH"}, {"player": "Lane Thomas", "price": 5, "surplus": -2.0, "pos_type": "hitter", "position": "OF"}, {"player": "Nolan Schanuel", "price": 14, "surplus": -5.9, "pos_type": "hitter", "position": "1B"}, {"player": "Rhys Hoskins", "price": 3, "surplus": -3.0, "pos_type": "hitter", "position": "1B"}, {"player": "Bo Naylor", "price": 6, "surplus": -4.7, "pos_type": "hitter", "position": "C"}, {"player": "Josh Jung", "price": 8, "surplus": -2.5, "pos_type": "hitter", "position": "3B"}, {"player": "Drew Anderson", "price": 1, "surplus": -1.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Grayson Rodriguez", "price": 1, "surplus": 4.0, "pos_type": "pitcher", "position": "SP"}], "keeper_total": 150, "keeper_count": 15, "total_committed": 261, "remaining": -1, "hitter_pct": 58.6, "top1": 34, "top3": 63, "split_surplus_total": -41.0}, "Kerry & Mitch": {"auction_total": 170, "hitter_total": 111, "pitcher_total": 59, "count": 11, "surplus_total": -30.8, "players": [{"player": "Jos\u00e9 Ram\u00edrez", "price": 48, "surplus": -15.6, "pos_type": "hitter", "position": "3B"}, {"player": "Luis Castillo", "price": 16, "surplus": 6.5, "pos_type": "pitcher", "position": "SP"}, {"player": "Gunnar Henderson", "price": 40, "surplus": -12.3, "pos_type": "hitter", "position": "SS"}, {"player": "Dylan Cease", "price": 21, "surplus": 5.7, "pos_type": "pitcher", "position": "SP"}, {"player": "Taylor Ward", "price": 16, "surplus": -0.8, "pos_type": "hitter", "position": "OF"}, {"player": "Jordan Leasure", "price": 4, "surplus": -4.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Kody Clemens", "price": 5, "surplus": -5.0, "pos_type": "hitter", "position": "1B"}, {"player": "Grant Taylor", "price": 10, "surplus": -3.9, "pos_type": "pitcher", "position": "RP"}, {"player": "Ryan Weathers", "price": 8, "surplus": 0.6, "pos_type": "pitcher", "position": "SP"}, {"player": "Kyle Higashioka", "price": 1, "surplus": -1.0, "pos_type": "hitter", "position": "C"}, {"player": "Ryan Mountcastle", "price": 1, "surplus": -1.0, "pos_type": "hitter", "position": "1B"}], "keeper_total": 71, "keeper_count": 5, "total_committed": 241, "remaining": 19, "hitter_pct": 65.3, "top1": 48, "top3": 109, "split_surplus_total": -27.0}, "Dancing With Dingos": {"auction_total": 151, "hitter_total": 118, "pitcher_total": 33, "count": 13, "surplus_total": -30.1, "players": [{"player": "Wyatt Langford", "price": 35, "surplus": -13.4, "pos_type": "hitter", "position": "OF"}, {"player": "Riley Greene", "price": 29, "surplus": -11.3, "pos_type": "hitter", "position": "OF"}, {"player": "Mike Trout", "price": 16, "surplus": -7.6, "pos_type": "hitter", "position": "OF"}, {"player": "Tanner Bibee", "price": 12, "surplus": 9.5, "pos_type": "pitcher", "position": "SP"}, {"player": "Kerry Carpenter", "price": 14, "surplus": -4.7, "pos_type": "hitter", "position": "DH/OF"}, {"player": "Anthony Volpe", "price": 11, "surplus": -4.9, "pos_type": "hitter", "position": "SS"}, {"player": "Jonathan India", "price": 2, "surplus": 1.3, "pos_type": "hitter", "position": "2B"}, {"player": "Cody Ponce", "price": 9, "surplus": 3.2, "pos_type": "pitcher", "position": "SP"}, {"player": "Logan O'Hoppe", "price": 8, "surplus": -5.9, "pos_type": "hitter", "position": "C"}, {"player": "Mike Burrows", "price": 7, "surplus": 1.1, "pos_type": "pitcher", "position": "SP"}, {"player": "Zach Eflin", "price": 3, "surplus": 6.6, "pos_type": "pitcher", "position": "SP"}, {"player": "Matt Strahm", "price": 2, "surplus": -1.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Cole Young", "price": 3, "surplus": -3.0, "pos_type": "hitter", "position": "2B"}], "keeper_total": 102, "keeper_count": 9, "total_committed": 253, "remaining": 7, "hitter_pct": 78.1, "top1": 35, "top3": 80, "split_surplus_total": -25.3}, "Kosher Hogs": {"auction_total": 116, "hitter_total": 107, "pitcher_total": 9, "count": 8, "surplus_total": -39.6, "players": [{"player": "Cal Raleigh", "price": 30, "surplus": -8.0, "pos_type": "hitter", "position": "C"}, {"player": "Pete Alonso", "price": 34, "surplus": -12.6, "pos_type": "hitter", "position": "1B"}, {"player": "Josh Naylor", "price": 25, "surplus": -5.1, "pos_type": "hitter", "position": "1B"}, {"player": "Will Vest", "price": 6, "surplus": -2.4, "pos_type": "pitcher", "position": "RP"}, {"player": "Cam Smith", "price": 14, "surplus": -11.2, "pos_type": "hitter", "position": "OF"}, {"player": "Isaac Collins", "price": 4, "surplus": -2.1, "pos_type": "hitter", "position": "OF"}, {"player": "Justin Verlander", "price": 2, "surplus": 2.8, "pos_type": "pitcher", "position": "SP"}, {"player": "Keegan Akin", "price": 1, "surplus": -1.0, "pos_type": "pitcher", "position": "RP"}], "keeper_total": 139, "keeper_count": 14, "total_committed": 255, "remaining": 5, "hitter_pct": 92.2, "top1": 34, "top3": 89, "split_surplus_total": -24.8}, "Gusteroids": {"auction_total": 181, "hitter_total": 77, "pitcher_total": 104, "count": 12, "surplus_total": -10.3, "players": [{"player": "George Kirby", "price": 25, "surplus": 2.8, "pos_type": "pitcher", "position": "SP"}, {"player": "Logan Gilbert", "price": 30, "surplus": 1.8, "pos_type": "pitcher", "position": "SP"}, {"player": "Corey Seager", "price": 23, "surplus": -8.4, "pos_type": "hitter", "position": "SS"}, {"player": "Willson Contreras", "price": 14, "surplus": -2.2, "pos_type": "hitter", "position": "C"}, {"player": "Steven Kwan", "price": 17, "surplus": -3.7, "pos_type": "hitter", "position": "OF"}, {"player": "Ranger Suarez", "price": 14, "surplus": 6.8, "pos_type": "pitcher", "position": "SP"}, {"player": "Ryan Pepiot", "price": 17, "surplus": 5.5, "pos_type": "pitcher", "position": "SP"}, {"player": "Kazuma Okamoto", "price": 12, "surplus": -3.6, "pos_type": "hitter", "position": "3B"}, {"player": "Kenley Jansen", "price": 15, "surplus": -5.9, "pos_type": "pitcher", "position": "RP"}, {"player": "Ryan Jeffers", "price": 7, "surplus": -3.0, "pos_type": "hitter", "position": "C"}, {"player": "J.P. Crawford", "price": 4, "surplus": -0.2, "pos_type": "hitter", "position": "SS"}, {"player": "Kirby Yates", "price": 3, "surplus": -0.2, "pos_type": "pitcher", "position": "RP"}], "keeper_total": 66, "keeper_count": 10, "total_committed": 247, "remaining": 13, "hitter_pct": 42.5, "top1": 30, "top3": 78, "split_surplus_total": -23.4}, "Mean Machine": {"auction_total": 85, "hitter_total": 15, "pitcher_total": 70, "count": 9, "surplus_total": -12.6, "players": [{"player": "Framber Valdez", "price": 23, "surplus": 5.3, "pos_type": "pitcher", "position": "SP"}, {"player": "Carlos Est\u00e9vez", "price": 20, "surplus": -7.8, "pos_type": "pitcher", "position": "RP"}, {"player": "Christian Walker", "price": 12, "surplus": -1.7, "pos_type": "hitter", "position": "1B"}, {"player": "Kumar Rocker", "price": 1, "surplus": -1.0, "pos_type": "pitcher", "position": "SP"}, {"player": "Gavin Williams", "price": 17, "surplus": 0.6, "pos_type": "pitcher", "position": "SP"}, {"player": "Taylor Rogers", "price": 8, "surplus": -5.2, "pos_type": "pitcher", "position": "RP"}, {"player": "Brayan Rocchio", "price": 1, "surplus": 0.2, "pos_type": "hitter", "position": "SS"}, {"player": "Jedixson Paez", "price": 1, "surplus": -1.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Paul Goldschmidt", "price": 2, "surplus": -2.0, "pos_type": "hitter", "position": "1B"}], "keeper_total": 170, "keeper_count": 14, "total_committed": 255, "remaining": 5, "hitter_pct": 17.6, "top1": 23, "top3": 60, "split_surplus_total": -24.0}, "On a Bender": {"auction_total": 148, "hitter_total": 90, "pitcher_total": 58, "count": 14, "surplus_total": -44.4, "players": [{"player": "Ryan Helsley", "price": 23, "surplus": -6.3, "pos_type": "pitcher", "position": "RP"}, {"player": "Jose Altuve", "price": 16, "surplus": -0.5, "pos_type": "hitter", "position": "2B"}, {"player": "Maikel Garcia", "price": 34, "surplus": -14.3, "pos_type": "hitter", "position": "3B"}, {"player": "Tatsuya Imai", "price": 10, "surplus": 0.9, "pos_type": "pitcher", "position": "SP"}, {"player": "Giancarlo Stanton", "price": 7, "surplus": -3.2, "pos_type": "hitter", "position": "DH/OF"}, {"player": "Chase Meidroth", "price": 10, "surplus": -5.7, "pos_type": "hitter", "position": "2B/SS"}, {"player": "Carlos Narv\u00e1ez", "price": 3, "surplus": -3.0, "pos_type": "hitter", "position": "C"}, {"player": "Denzel Clarke", "price": 5, "surplus": -4.0, "pos_type": "hitter", "position": "OF"}, {"player": "Noah Cameron", "price": 2, "surplus": 8.7, "pos_type": "pitcher", "position": "SP"}, {"player": "Garrett Cleavinger", "price": 10, "surplus": -5.6, "pos_type": "pitcher", "position": "RP"}, {"player": "Joey Cantillo", "price": 5, "surplus": 4.4, "pos_type": "pitcher", "position": "SP"}, {"player": "Jeff McNeil", "price": 5, "surplus": -0.1, "pos_type": "hitter", "position": "2B/OF"}, {"player": "Ben Joyce", "price": 8, "surplus": -8.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Dominic Canzone", "price": 10, "surplus": -7.7, "pos_type": "hitter", "position": "OF"}], "keeper_total": 84, "keeper_count": 11, "total_committed": 232, "remaining": 28, "hitter_pct": 60.8, "top1": 34, "top3": 73, "split_surplus_total": -44.0}, "HAMMERHEADS": {"auction_total": 190, "hitter_total": 111, "pitcher_total": 79, "count": 18, "surplus_total": -66.3, "players": [{"player": "Josh Hader", "price": 19, "surplus": -6.4, "pos_type": "pitcher", "position": "RP"}, {"player": "MacKenzie Gore", "price": 14, "surplus": 6.1, "pos_type": "pitcher", "position": "SP"}, {"player": "Yordan Alvarez", "price": 31, "surplus": -10.9, "pos_type": "hitter", "position": "DH/OF"}, {"player": "Jordan Westburg", "price": 11, "surplus": -6.5, "pos_type": "hitter", "position": "2B/3B"}, {"player": "Royce Lewis", "price": 11, "surplus": -2.1, "pos_type": "hitter", "position": "3B"}, {"player": "Brendan Donovan", "price": 6, "surplus": 1.9, "pos_type": "hitter", "position": "2B/OF"}, {"player": "Dylan Beavers", "price": 10, "surplus": -8.2, "pos_type": "hitter", "position": "OF"}, {"player": "Jorge Soler", "price": 5, "surplus": -1.3, "pos_type": "hitter", "position": "DH/OF"}, {"player": "Jake Burger", "price": 13, "surplus": -3.4, "pos_type": "hitter", "position": "1B/3B"}, {"player": "Mick Abel", "price": 5, "surplus": -4.0, "pos_type": "pitcher", "position": "SP"}, {"player": "Bryce Miller", "price": 7, "surplus": 5.3, "pos_type": "pitcher", "position": "SP"}, {"player": "Bryan Abreu", "price": 17, "surplus": -8.3, "pos_type": "pitcher", "position": "RP"}, {"player": "Brooks Lee", "price": 8, "surplus": -4.0, "pos_type": "hitter", "position": "3B/SS"}, {"player": "Luisangel Acu\u00f1a", "price": 8, "surplus": -6.5, "pos_type": "hitter", "position": "2B"}, {"player": "Edgar Quero", "price": 5, "surplus": -5.0, "pos_type": "hitter", "position": "C/DH"}, {"player": "Connelly Early", "price": 10, "surplus": -10.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Parker Messick", "price": 7, "surplus": 0.0, "pos_type": "pitcher", "position": "SP"}, {"player": "Joey Loperfido", "price": 3, "surplus": -3.0, "pos_type": "hitter", "position": "OF"}], "keeper_total": 50, "keeper_count": 7, "total_committed": 240, "remaining": 20, "hitter_pct": 58.4, "top1": 31, "top3": 67, "split_surplus_total": -64.8}, "R&R": {"auction_total": 100, "hitter_total": 57, "pitcher_total": 43, "count": 12, "surplus_total": -19.6, "players": [{"player": "Gleyber Torres", "price": 14, "surplus": -2.5, "pos_type": "hitter", "position": "2B"}, {"player": "Nathan Eovaldi", "price": 22, "surplus": 1.1, "pos_type": "pitcher", "position": "SP"}, {"player": "Carlos Rod\u00f3n", "price": 13, "surplus": 4.7, "pos_type": "pitcher", "position": "SP"}, {"player": "Salvador Perez", "price": 16, "surplus": -3.9, "pos_type": "hitter", "position": "C"}, {"player": "Cedric Mullins", "price": 13, "surplus": -6.4, "pos_type": "hitter", "position": "OF"}, {"player": "Triston Casas", "price": 3, "surplus": -3.0, "pos_type": "hitter", "position": "1B"}, {"player": "Zach McKinstry", "price": 3, "surplus": -1.8, "pos_type": "hitter", "position": "3B/OF"}, {"player": "Josh Bell", "price": 5, "surplus": 1.5, "pos_type": "hitter", "position": "1B"}, {"player": "Tyler Rogers", "price": 6, "surplus": -6.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Camilo Doval", "price": 2, "surplus": -2.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Javier B\u00e1ez", "price": 1, "surplus": -1.0, "pos_type": "hitter", "position": "SS"}, {"player": "Trevor Larnach", "price": 2, "surplus": -0.3, "pos_type": "hitter", "position": "DH/OF"}], "keeper_total": 157, "keeper_count": 12, "total_committed": 257, "remaining": 3, "hitter_pct": 57.0, "top1": 22, "top3": 52, "split_surplus_total": -19.5}, "Shrooms": {"auction_total": 137, "hitter_total": 98, "pitcher_total": 39, "count": 11, "surplus_total": -29.2, "players": [{"player": "Sonny Gray", "price": 19, "surplus": 7.0, "pos_type": "pitcher", "position": "SP"}, {"player": "Shea Langeliers", "price": 26, "surplus": -11.2, "pos_type": "hitter", "position": "C"}, {"player": "Jack Flaherty", "price": 15, "surplus": 5.2, "pos_type": "pitcher", "position": "SP"}, {"player": "Yainer Diaz", "price": 16, "surplus": -7.1, "pos_type": "hitter", "position": "C/DH"}, {"player": "Brandon Nimmo", "price": 14, "surplus": 0.1, "pos_type": "hitter", "position": "OF"}, {"player": "Caleb Durbin", "price": 16, "surplus": -5.2, "pos_type": "hitter", "position": "3B"}, {"player": "Matt Wallner", "price": 13, "surplus": -5.5, "pos_type": "hitter", "position": "OF"}, {"player": "Hogan Harris", "price": 5, "surplus": -5.0, "pos_type": "pitcher", "position": "RP"}, {"player": "Gabriel Arias", "price": 1, "surplus": 0.0, "pos_type": "hitter", "position": "SS"}, {"player": "Ryan McMahon", "price": 3, "surplus": -2.0, "pos_type": "hitter", "position": "3B"}, {"player": "Austin Hays", "price": 9, "surplus": -5.5, "pos_type": "hitter", "position": "OF"}], "keeper_total": 115, "keeper_count": 11, "total_committed": 252, "remaining": 8, "hitter_pct": 71.5, "top1": 26, "top3": 61, "split_surplus_total": -24.9}}, "keepers": {"Gusteroids": [{"player": "Miguel Vargas", "salary": 4, "status": "act", "position": "1B"}, {"player": "Jackson Holliday", "salary": 15, "status": "act", "position": "2B"}, {"player": "Evan Carter", "salary": 10, "status": "act", "position": "OF"}, {"player": "Roman Anthony", "salary": 7, "status": "act", "position": "OF"}, {"player": "Ben Rice", "salary": 3, "status": "act", "position": "C"}, {"player": "Jac Caglianone", "salary": 7, "status": "act", "position": "UT"}, {"player": "Tyler Soderstrom", "salary": 10, "status": "act", "position": "CI"}, {"player": "Luke Keaschall", "salary": 7, "status": "act", "position": "MI"}, {"player": "Matt Brash", "salary": 1, "status": "act", "position": "P"}, {"player": "Garrett Whitlock", "salary": 2, "status": "act", "position": "P"}, {"player": "Sebastian Walcott", "salary": 5, "status": "min", "position": "SS"}, {"player": "Emmanuel Rodriguez", "salary": 5, "status": "min", "position": "OF"}, {"player": "Thayron Liranzo", "salary": 5, "status": "min", "position": "C"}, {"player": "Shunpeita Yamashita", "salary": 5, "status": "min", "position": "P"}], "Kosher Hogs": [{"player": "Coby Mayo", "salary": 7, "status": "act", "position": "1B"}, {"player": "Max Muncy", "salary": 1, "status": "act", "position": "2B"}, {"player": "Ernie Clement", "salary": 6, "status": "act", "position": "SS"}, {"player": "Marcelo Mayer", "salary": 7, "status": "act", "position": "3B"}, {"player": "Colton Cowser", "salary": 15, "status": "act", "position": "OF"}, {"player": "Lawrence Butler", "salary": 8, "status": "act", "position": "OF"}, {"player": "Andrew Benintendi", "salary": 9, "status": "act", "position": "OF"}, {"player": "Colson Montgomery", "salary": 7, "status": "act", "position": "MI"}, {"player": "Max Fried", "salary": 24, "status": "act", "position": "P"}, {"player": "Jacob DeGrom", "salary": 15, "status": "act", "position": "P"}, {"player": "Jeffrey Springs", "salary": 6, "status": "act", "position": "P"}, {"player": "Garrett Crochet", "salary": 11, "status": "act", "position": "P"}, {"player": "David Bednar", "salary": 15, "status": "act", "position": "P"}, {"player": "Casey Mize", "salary": 8, "status": "act", "position": "P"}, {"player": "Juan Brito", "salary": 5, "status": "min", "position": "SS"}, {"player": "Chase Hampton", "salary": 5, "status": "min", "position": "P"}, {"player": "Noah Schultz", "salary": 5, "status": "min", "position": "P"}], "On a Bender": [{"player": "Kyle Manzardo", "salary": 10, "status": "act", "position": "1B"}, {"player": "Isaac Paredes", "salary": 15, "status": "act", "position": "3B"}, {"player": "Chase DeLauter", "salary": 5, "status": "act", "position": "OF"}, {"player": "Addison Barger", "salary": 10, "status": "act", "position": "OF"}, {"player": "Brent Rooker", "salary": 15, "status": "act", "position": "OF"}, {"player": "Alejandro Kirk", "salary": 10, "status": "act", "position": "C"}, {"player": "Jose Soriano", "salary": 1, "status": "act", "position": "P"}, {"player": "Trey Yesavage", "salary": 10, "status": "act", "position": "P"}, {"player": "Seth Lugo", "salary": 1, "status": "act", "position": "P"}, {"player": "Gerrit Cole", "salary": 6, "status": "act", "position": "P"}, {"player": "Yusei Kikuchi", "salary": 1, "status": "act", "position": "P"}, {"player": "Roderick Arias", "salary": 5, "status": "min", "position": "SS"}, {"player": "Max Clark", "salary": 5, "status": "min", "position": "OF"}, {"player": "Brendan Summerhill", "salary": 5, "status": "min", "position": "OF"}, {"player": "Blake Mitchell", "salary": 5, "status": "min", "position": "C"}, {"player": "Hagen Smith", "salary": 5, "status": "min", "position": "P"}], "R&R": [{"player": "Yandy Diaz", "salary": 15, "status": "act", "position": "1B"}, {"player": "Trevor Story", "salary": 8, "status": "act", "position": "SS"}, {"player": "Kyle Teel", "salary": 7, "status": "act", "position": "OF"}, {"player": "Jazz Chisholm", "salary": 35, "status": "act", "position": "OF"}, {"player": "Trent Grisham", "salary": 10, "status": "act", "position": "OF"}, {"player": "Cody Bellinger", "salary": 24, "status": "act", "position": "CI"}, {"player": "Chris Bassitt", "salary": 9, "status": "act", "position": "P"}, {"player": "Lucas Giolito", "salary": 4, "status": "act", "position": "P"}, {"player": "Jeff Hoffman", "salary": 20, "status": "act", "position": "P"}, {"player": "Luis Severino", "salary": 6, "status": "act", "position": "P"}, {"player": "Michael Wacha", "salary": 8, "status": "act", "position": "P"}, {"player": "Drew Rasmussen", "salary": 11, "status": "act", "position": "P"}, {"player": "Jacob Melton", "salary": 5, "status": "min", "position": "OF"}, {"player": "Jaison Chourio", "salary": 5, "status": "min", "position": "OF"}], "Shrooms": [{"player": "Vinnie Pasquantino", "salary": 19, "status": "act", "position": "1B"}, {"player": "Zach Neto", "salary": 15, "status": "act", "position": "SS"}, {"player": "Lenyn Sosa", "salary": 1, "status": "act", "position": "3B"}, {"player": "Jesus Sanchez", "salary": 9, "status": "act", "position": "OF"}, {"player": "Daulton Varsho", "salary": 9, "status": "act", "position": "OF"}, {"player": "Ceddanne Rafaela", "salary": 15, "status": "act", "position": "MI"}, {"player": "Aroldis Chapman", "salary": 12, "status": "act", "position": "P"}, {"player": "Griffin Jax", "salary": 6, "status": "act", "position": "P"}, {"player": "Hunter Brown", "salary": 15, "status": "act", "position": "P"}, {"player": "Shane Smith", "salary": 10, "status": "act", "position": "P"}, {"player": "Edwin Uceta", "salary": 4, "status": "act", "position": "P"}, {"player": "Spencer Jones", "salary": 5, "status": "min", "position": "OF"}, {"player": "Josue Briceno", "salary": 5, "status": "min", "position": "C"}, {"player": "Daniel Espino", "salary": 5, "status": "min", "position": "P"}, {"player": "Ricky Tiedemann", "salary": 5, "status": "min", "position": "P"}], "Kerry & Mitch": [{"player": "Vladimir Guerrero Jr.", "salary": 39, "status": "act", "position": "1B"}, {"player": "Kevin McGonigle", "salary": 5, "status": "act", "position": "SS"}, {"player": "Shane McClanahan", "salary": 19, "status": "act", "position": "P"}, {"player": "Will Warren", "salary": 1, "status": "act", "position": "P"}, {"player": "Kris Bubic", "salary": 7, "status": "act", "position": "P"}, {"player": "Xavier Isaac", "salary": 5, "status": "min", "position": "1B"}, {"player": "Travis Bazzana", "salary": 5, "status": "min", "position": "2B"}, {"player": "Bryce Rainer", "salary": 5, "status": "min", "position": "SS"}, {"player": "Felnin Celesten", "salary": 5, "status": "min", "position": "SS"}, {"player": "Gavin Cross", "salary": 5, "status": "min", "position": "OF"}], "Thunder & Lightning": [{"player": "Nick Kurtz", "salary": 7, "status": "act", "position": "1B"}, {"player": "Jacob Wilson", "salary": 7, "status": "act", "position": "SS"}, {"player": "Carlos Correa", "salary": 16, "status": "act", "position": "3B"}, {"player": "Byron Buxton", "salary": 16, "status": "act", "position": "OF"}, {"player": "Jo Adell", "salary": 10, "status": "act", "position": "OF"}, {"player": "Julio Rodriguez", "salary": 20, "status": "act", "position": "OF"}, {"player": "Randy Arozarena", "salary": 16, "status": "act", "position": "OF"}, {"player": "Colt Keith", "salary": 11, "status": "act", "position": "CI"}, {"player": "Seranthony Dominguez", "salary": 1, "status": "act", "position": "P"}, {"player": "Cam Schlittler", "salary": 10, "status": "act", "position": "P"}, {"player": "Cole Ragans", "salary": 11, "status": "act", "position": "P"}, {"player": "Tarik Skubal", "salary": 13, "status": "act", "position": "P"}, {"player": "Chris Martin", "salary": 3, "status": "act", "position": "P"}, {"player": "Shane Bieber", "salary": 7, "status": "act", "position": "P"}, {"player": "Jack Leiter", "salary": 2, "status": "act", "position": "P"}], "HAMMERHEADS": [{"player": "Jeremy Pena", "salary": 17, "status": "act", "position": "SS"}, {"player": "Josh Lowe", "salary": 13, "status": "act", "position": "OF"}, {"player": "Samuel Basallo", "salary": 5, "status": "act", "position": "C"}, {"player": "Cade Povich", "salary": 1, "status": "act", "position": "P"}, {"player": "Cole Sands", "salary": 2, "status": "act", "position": "P"}, {"player": "Trevor Rogers", "salary": 10, "status": "act", "position": "P"}, {"player": "Kyle Bradish", "salary": 2, "status": "act", "position": "P"}, {"player": "Yoeilin Cespedes", "salary": 5, "status": "min", "position": "SS"}, {"player": "Angel Genao", "salary": 5, "status": "min", "position": "SS"}, {"player": "Miguel Bleis", "salary": 5, "status": "min", "position": "OF"}, {"player": "Enrique Bradfield", "salary": 5, "status": "min", "position": "OF"}, {"player": "Lazaro Montes", "salary": 5, "status": "min", "position": "OF"}, {"player": "Justin Foscue", "salary": 5, "status": "res", "position": "UT"}], "Mean Machine": [{"player": "Spencer Torkelson", "salary": 6, "status": "act", "position": "1B"}, {"player": "Carson Williams", "salary": 7, "status": "act", "position": "SS"}, {"player": "Junior Caminero", "salary": 20, "status": "act", "position": "3B"}, {"player": "Chandler Simpson", "salary": 7, "status": "act", "position": "OF"}, {"player": "Jose Caballero", "salary": 6, "status": "act", "position": "OF"}, {"player": "Aaron Judge", "salary": 47, "status": "act", "position": "OF"}, {"player": "Jarren Duran", "salary": 15, "status": "act", "position": "OF"}, {"player": "Carter Jensen", "salary": 10, "status": "act", "position": "C"}, {"player": "Dillon Dingler", "salary": 10, "status": "act", "position": "C"}, {"player": "Jake Meyers", "salary": 2, "status": "act", "position": "UT"}, {"player": "Wilyer Abreu", "salary": 15, "status": "act", "position": "UT"}, {"player": "Yoan Moncada", "salary": 3, "status": "act", "position": "CI"}, {"player": "Brayan Bello", "salary": 1, "status": "act", "position": "P"}, {"player": "Joe Ryan", "salary": 21, "status": "act", "position": "P"}, {"player": "Jace LaViolette", "salary": 5, "status": "min", "position": "OF"}], "Dancing With Dingos": [{"player": "Jonathan Aranda", "salary": 4, "status": "act", "position": "1B"}, {"player": "Bobby Witt", "salary": 20, "status": "act", "position": "SS"}, {"player": "Munetaka Murakami", "salary": 5, "status": "act", "position": "3B"}, {"player": "George Springer", "salary": 16, "status": "act", "position": "OF"}, {"player": "Austin Wells", "salary": 5, "status": "act", "position": "C"}, {"player": "Kevin Gausman", "salary": 18, "status": "act", "position": "P"}, {"player": "Bryan Woo", "salary": 15, "status": "act", "position": "P"}, {"player": "Shane Baz", "salary": 10, "status": "act", "position": "P"}, {"player": "Cade Smith", "salary": 9, "status": "act", "position": "P"}, {"player": "Michael Arroyo", "salary": 5, "status": "min", "position": "SS"}, {"player": "Colt Emerson", "salary": 5, "status": "min", "position": "3B"}, {"player": "Walker Jenkins", "salary": 5, "status": "min", "position": "OF"}]}, "positionMarket": {"2B": {"median_ratio": 1.22, "mean_ratio": 1.92, "count": 5, "items": [{"player": "Andr\u00e9s Gim\u00e9nez", "price": 14, "value": 10.1, "ratio": 1.39, "team": "Thunder & Lightning"}, {"player": "Jose Altuve", "price": 16, "value": 15.5, "ratio": 1.03, "team": "On a Bender"}, {"player": "Gleyber Torres", "price": 14, "value": 11.5, "ratio": 1.22, "team": "R&R"}, {"player": "Jonathan India", "price": 2, "value": 3.3, "ratio": 0.61, "team": "Dancing With Dingos"}, {"player": "Luisangel Acu\u00f1a", "price": 8, "value": 1.5, "ratio": 5.33, "team": "HAMMERHEADS"}]}, "RP": {"median_ratio": 1.64, "mean_ratio": 1.73, "count": 13, "items": [{"player": "Andr\u00e9s Mu\u00f1oz", "price": 34, "value": 22.2, "ratio": 1.53, "team": "Thunder & Lightning"}, {"player": "Ryan Helsley", "price": 23, "value": 16.7, "ratio": 1.38, "team": "On a Bender"}, {"player": "Josh Hader", "price": 19, "value": 12.6, "ratio": 1.51, "team": "HAMMERHEADS"}, {"player": "Carlos Est\u00e9vez", "price": 20, "value": 12.2, "ratio": 1.64, "team": "Mean Machine"}, {"player": "Robert Garcia", "price": 10, "value": 7.9, "ratio": 1.27, "team": "Thunder & Lightning"}, {"player": "Kenley Jansen", "price": 15, "value": 9.1, "ratio": 1.65, "team": "Gusteroids"}, {"player": "Will Vest", "price": 6, "value": 3.6, "ratio": 1.67, "team": "Kosher Hogs"}, {"player": "Grant Taylor", "price": 10, "value": 6.1, "ratio": 1.64, "team": "Kerry & Mitch"}, {"player": "Bryan Abreu", "price": 17, "value": 8.7, "ratio": 1.95, "team": "HAMMERHEADS"}, {"player": "Taylor Rogers", "price": 8, "value": 2.8, "ratio": 2.86, "team": "Mean Machine"}, {"player": "Matt Strahm", "price": 2, "value": 1.0, "ratio": 2.0, "team": "Dancing With Dingos"}, {"player": "Kirby Yates", "price": 3, "value": 2.8, "ratio": 1.07, "team": "Gusteroids"}, {"player": "Garrett Cleavinger", "price": 10, "value": 4.4, "ratio": 2.27, "team": "On a Bender"}]}, "3B": {"median_ratio": 1.48, "mean_ratio": 1.69, "count": 7, "items": [{"player": "Jos\u00e9 Ram\u00edrez", "price": 48, "value": 32.4, "ratio": 1.48, "team": "Kerry & Mitch"}, {"player": "Maikel Garcia", "price": 34, "value": 19.7, "ratio": 1.73, "team": "On a Bender"}, {"player": "Kazuma Okamoto", "price": 12, "value": 8.4, "ratio": 1.43, "team": "Gusteroids"}, {"player": "Caleb Durbin", "price": 16, "value": 10.8, "ratio": 1.48, "team": "Shrooms"}, {"player": "Royce Lewis", "price": 11, "value": 8.9, "ratio": 1.24, "team": "HAMMERHEADS"}, {"player": "Ryan McMahon", "price": 3, "value": 1.0, "ratio": 3.0, "team": "Shrooms"}, {"player": "Josh Jung", "price": 8, "value": 5.5, "ratio": 1.45, "team": "Thunder & Lightning"}]}, "SP": {"median_ratio": 0.74, "mean_ratio": 0.87, "count": 26, "items": [{"player": "Luis Castillo", "price": 16, "value": 22.5, "ratio": 0.71, "team": "Kerry & Mitch"}, {"player": "George Kirby", "price": 25, "value": 27.8, "ratio": 0.9, "team": "Gusteroids"}, {"player": "Framber Valdez", "price": 23, "value": 28.3, "ratio": 0.81, "team": "Mean Machine"}, {"player": "Logan Gilbert", "price": 30, "value": 31.8, "ratio": 0.94, "team": "Gusteroids"}, {"player": "MacKenzie Gore", "price": 14, "value": 20.1, "ratio": 0.7, "team": "HAMMERHEADS"}, {"player": "Dylan Cease", "price": 21, "value": 26.7, "ratio": 0.79, "team": "Kerry & Mitch"}, {"player": "Nathan Eovaldi", "price": 22, "value": 23.1, "ratio": 0.95, "team": "R&R"}, {"player": "Sonny Gray", "price": 19, "value": 26.0, "ratio": 0.73, "team": "Shrooms"}, {"player": "Jack Flaherty", "price": 15, "value": 20.2, "ratio": 0.74, "team": "Shrooms"}, {"player": "Ranger Suarez", "price": 14, "value": 20.8, "ratio": 0.67, "team": "Gusteroids"}, {"player": "Carlos Rod\u00f3n", "price": 13, "value": 17.7, "ratio": 0.73, "team": "R&R"}, {"player": "Tatsuya Imai", "price": 10, "value": 10.9, "ratio": 0.92, "team": "On a Bender"}, {"player": "Ryan Pepiot", "price": 17, "value": 22.5, "ratio": 0.76, "team": "Gusteroids"}, {"player": "Gavin Williams", "price": 17, "value": 17.6, "ratio": 0.97, "team": "Mean Machine"}, {"player": "Tanner Bibee", "price": 12, "value": 21.5, "ratio": 0.56, "team": "Dancing With Dingos"}, {"player": "Mick Abel", "price": 5, "value": 1.0, "ratio": 5.0, "team": "HAMMERHEADS"}, {"player": "Bryce Miller", "price": 7, "value": 12.3, "ratio": 0.57, "team": "HAMMERHEADS"}, {"player": "Cody Ponce", "price": 9, "value": 12.2, "ratio": 0.74, "team": "Dancing With Dingos"}, {"player": "Mike Burrows", "price": 7, "value": 8.1, "ratio": 0.86, "team": "Dancing With Dingos"}, {"player": "Ryan Weathers", "price": 8, "value": 8.6, "ratio": 0.93, "team": "Kerry & Mitch"}, {"player": "Zach Eflin", "price": 3, "value": 9.6, "ratio": 0.31, "team": "Dancing With Dingos"}, {"player": "Noah Cameron", "price": 2, "value": 10.7, "ratio": 0.19, "team": "On a Bender"}, {"player": "Parker Messick", "price": 7, "value": 7.0, "ratio": 1.0, "team": "HAMMERHEADS"}, {"player": "Joey Cantillo", "price": 5, "value": 9.4, "ratio": 0.53, "team": "On a Bender"}, {"player": "Justin Verlander", "price": 2, "value": 4.8, "ratio": 0.42, "team": "Kosher Hogs"}, {"player": "Grayson Rodriguez", "price": 1, "value": 5.0, "ratio": 0.2, "team": "Thunder & Lightning"}]}, "OF": {"median_ratio": 1.9, "mean_ratio": 2.56, "count": 15, "items": [{"player": "Wyatt Langford", "price": 35, "value": 21.6, "ratio": 1.62, "team": "Dancing With Dingos"}, {"player": "Riley Greene", "price": 29, "value": 17.7, "ratio": 1.64, "team": "Dancing With Dingos"}, {"player": "Steven Kwan", "price": 17, "value": 13.3, "ratio": 1.28, "team": "Gusteroids"}, {"player": "Taylor Ward", "price": 16, "value": 15.2, "ratio": 1.05, "team": "Kerry & Mitch"}, {"player": "Brandon Nimmo", "price": 14, "value": 14.1, "ratio": 0.99, "team": "Shrooms"}, {"player": "Cedric Mullins", "price": 13, "value": 6.6, "ratio": 1.97, "team": "R&R"}, {"player": "Mike Trout", "price": 16, "value": 8.4, "ratio": 1.9, "team": "Dancing With Dingos"}, {"player": "Matt Wallner", "price": 13, "value": 7.5, "ratio": 1.73, "team": "Shrooms"}, {"player": "Lane Thomas", "price": 5, "value": 3.0, "ratio": 1.67, "team": "Thunder & Lightning"}, {"player": "Dylan Beavers", "price": 10, "value": 1.8, "ratio": 5.56, "team": "HAMMERHEADS"}, {"player": "Cam Smith", "price": 14, "value": 2.8, "ratio": 5.0, "team": "Kosher Hogs"}, {"player": "Austin Hays", "price": 9, "value": 3.5, "ratio": 2.57, "team": "Shrooms"}, {"player": "Denzel Clarke", "price": 5, "value": 1.0, "ratio": 5.0, "team": "On a Bender"}, {"player": "Isaac Collins", "price": 4, "value": 1.9, "ratio": 2.11, "team": "Kosher Hogs"}, {"player": "Dominic Canzone", "price": 10, "value": 2.3, "ratio": 4.35, "team": "On a Bender"}]}, "C": {"median_ratio": 1.75, "mean_ratio": 2.26, "count": 7, "items": [{"player": "Cal Raleigh", "price": 30, "value": 22.0, "ratio": 1.36, "team": "Kosher Hogs"}, {"player": "Shea Langeliers", "price": 26, "value": 14.8, "ratio": 1.76, "team": "Shrooms"}, {"player": "Willson Contreras", "price": 14, "value": 11.8, "ratio": 1.19, "team": "Gusteroids"}, {"player": "Salvador Perez", "price": 16, "value": 12.1, "ratio": 1.32, "team": "R&R"}, {"player": "Bo Naylor", "price": 6, "value": 1.3, "ratio": 4.62, "team": "Thunder & Lightning"}, {"player": "Ryan Jeffers", "price": 7, "value": 4.0, "ratio": 1.75, "team": "Gusteroids"}, {"player": "Logan O'Hoppe", "price": 8, "value": 2.1, "ratio": 3.81, "team": "Dancing With Dingos"}]}, "SS": {"median_ratio": 1.44, "mean_ratio": 1.28, "count": 6, "items": [{"player": "Gunnar Henderson", "price": 40, "value": 27.7, "ratio": 1.44, "team": "Kerry & Mitch"}, {"player": "Corey Seager", "price": 23, "value": 14.6, "ratio": 1.58, "team": "Gusteroids"}, {"player": "Anthony Volpe", "price": 11, "value": 6.1, "ratio": 1.8, "team": "Dancing With Dingos"}, {"player": "Gabriel Arias", "price": 1, "value": 1.0, "ratio": 1.0, "team": "Shrooms"}, {"player": "J.P. Crawford", "price": 4, "value": 3.8, "ratio": 1.05, "team": "Gusteroids"}, {"player": "Brayan Rocchio", "price": 1, "value": 1.2, "ratio": 0.83, "team": "Mean Machine"}]}, "1B": {"median_ratio": 1.26, "mean_ratio": 1.3, "count": 5, "items": [{"player": "Pete Alonso", "price": 34, "value": 21.4, "ratio": 1.59, "team": "Kosher Hogs"}, {"player": "Josh Naylor", "price": 25, "value": 19.9, "ratio": 1.26, "team": "Kosher Hogs"}, {"player": "Christian Walker", "price": 12, "value": 10.3, "ratio": 1.17, "team": "Mean Machine"}, {"player": "Nolan Schanuel", "price": 14, "value": 8.1, "ratio": 1.73, "team": "Thunder & Lightning"}, {"player": "Josh Bell", "price": 5, "value": 6.5, "ratio": 0.77, "team": "R&R"}]}, "DH/OF": {"median_ratio": 1.51, "mean_ratio": 1.48, "count": 5, "items": [{"player": "Yordan Alvarez", "price": 31, "value": 20.1, "ratio": 1.54, "team": "HAMMERHEADS"}, {"player": "Jorge Soler", "price": 5, "value": 3.7, "ratio": 1.35, "team": "HAMMERHEADS"}, {"player": "Kerry Carpenter", "price": 14, "value": 9.3, "ratio": 1.51, "team": "Dancing With Dingos"}, {"player": "Giancarlo Stanton", "price": 7, "value": 3.8, "ratio": 1.84, "team": "On a Bender"}, {"player": "Trevor Larnach", "price": 2, "value": 1.7, "ratio": 1.18, "team": "R&R"}]}, "C/DH": {"median_ratio": 2.27, "mean_ratio": 2.04, "count": 2, "items": [{"player": "Yainer Diaz", "price": 16, "value": 8.9, "ratio": 1.8, "team": "Shrooms"}, {"player": "Adley Rutschman", "price": 15, "value": 6.6, "ratio": 2.27, "team": "Thunder & Lightning"}]}, "2B/3B": {"median_ratio": 2.44, "mean_ratio": 2.44, "count": 1, "items": [{"player": "Jordan Westburg", "price": 11, "value": 4.5, "ratio": 2.44, "team": "HAMMERHEADS"}]}, "2B/OF": {"median_ratio": 1.02, "mean_ratio": 0.89, "count": 2, "items": [{"player": "Brendan Donovan", "price": 6, "value": 7.9, "ratio": 0.76, "team": "HAMMERHEADS"}, {"player": "Jeff McNeil", "price": 5, "value": 4.9, "ratio": 1.02, "team": "On a Bender"}]}, "1B/3B": {"median_ratio": 1.35, "mean_ratio": 1.35, "count": 1, "items": [{"player": "Jake Burger", "price": 13, "value": 9.6, "ratio": 1.35, "team": "HAMMERHEADS"}]}, "2B/SS": {"median_ratio": 2.33, "mean_ratio": 2.33, "count": 1, "items": [{"player": "Chase Meidroth", "price": 10, "value": 4.3, "ratio": 2.33, "team": "On a Bender"}]}, "3B/OF": {"median_ratio": 2.5, "mean_ratio": 2.5, "count": 1, "items": [{"player": "Zach McKinstry", "price": 3, "value": 1.2, "ratio": 2.5, "team": "R&R"}]}, "3B/SS": {"median_ratio": 2.0, "mean_ratio": 2.0, "count": 1, "items": [{"player": "Brooks Lee", "price": 8, "value": 4.0, "ratio": 2.0, "team": "HAMMERHEADS"}]}}, "meta": {"total_players": 119, "total_auction_spend": 1389, "avg_price": 11.7, "n_teams": 10, "budget_per_team": 260}, "positionNorm": {"2B": {"total_paid": 86, "total_value": 63.5, "count": 9, "ratio": 1.354}, "RP": {"total_paid": 177, "total_value": 110.1, "count": 13, "ratio": 1.608}, "3B": {"total_paid": 143, "total_value": 91.9, "count": 9, "ratio": 1.556}, "SP": {"total_paid": 324, "total_value": 426.2, "count": 26, "ratio": 0.76}, "OF": {"total_paid": 269, "total_value": 159.3, "count": 20, "ratio": 1.689}, "C": {"total_paid": 138, "total_value": 83.6, "count": 9, "ratio": 1.651}, "SS": {"total_paid": 80, "total_value": 54.4, "count": 6, "ratio": 1.471}, "1B": {"total_paid": 103, "total_value": 75.8, "count": 6, "ratio": 1.359}}, "positionNormSplit": {"2B": {"ratio": 1.084, "count": 9}, "RP": {"ratio": 2.09, "count": 13}, "3B": {"ratio": 1.247, "count": 9}, "SP": {"ratio": 0.992, "count": 26}, "OF": {"ratio": 1.354, "count": 20}, "C": {"ratio": 1.323, "count": 9}, "SS": {"ratio": 1.182, "count": 6}, "1B": {"ratio": 1.092, "count": 6}}};
+const TC = {
+  'Dancing With Dingos':'#457B9D','Gusteroids':'#C1666B','HAMMERHEADS':'#2A9D8F',
+  'Kerry & Mitch':'#D4A373','Kosher Hogs':'#7B6D8D','Mean Machine':'#8FB996',
+  'On a Bender':'#E07A5F','R&R':'#3A6EA5','Shrooms':'#5F7A4A','Thunder & Lightning':'#B5892B'
+};
+const C={bg:'#faf9f5',pri:'#3A6EA5',sec:'#C1666B',acc:'#2A9D8F',txt:'#2d2d2d',mid:'#666',lit:'#999',grd:'#ededeb'};
+let MODE_scatter='single',MODE_position='single',MODE_surplus='single',MODE_gust='single';
+function syncT(id,m){document.querySelectorAll('#'+id+' .tpill').forEach(b=>b.classList.toggle('active',b.dataset.mode===m));}
+function setModeScatter(m){MODE_scatter=m;syncT('scatter-toggle',m);document.getElementById('s-scatter').classList.toggle('split-mode',m==='split');updateScatter();}
+function setModePosition(m){MODE_position=m;syncT('position-toggle',m);document.getElementById('s-position').classList.toggle('split-mode',m==='split');updatePosition();}
+function setModeSurplus(m){MODE_surplus=m;syncT('surplus-toggle',m);document.getElementById('s-surplus').classList.toggle('split-mode',m==='split');updateSurplus();}
+function setModeGust(m){MODE_gust=m;syncT('gust-toggle',m);updateGusteroids();}
+
+const tt=d3.select('#tt');
+function tip(html,e){tt.html(html).style('opacity',1);mv(e);}
+function mv(e){const x=e.clientX,y=e.clientY,tw=240,th=140;tt.style('left',(x+14+tw>window.innerWidth?x-tw-14:x+14)+'px').style('top',(y+14+th>window.innerHeight?y-th-14:y+14)+'px');}
+function ht(){tt.style('opacity',0);}
+function fs(v){if(v==null)return '—';return v>=0?`+$${ v.toFixed(1)}`:`-$${ Math.abs(v).toFixed(1)}`;}
+function sc(v){return v==null?'':v>=0?'pos':'neg';}
+function gv(d,m){return m==='single'?d.dollar_value:d.split_dollar_value;}
+function gs(d,m){return m==='single'?d.surplus:d.split_surplus;}
+
+// ── SCATTER ──────────────────────────────────────────────────────────────────
+let scatterDots;
+(function(){
+  let selected=new Set();
+  const chipWrap=d3.select('#team-filter-chips');
+  const resetLink=d3.select('#reset-filter');
+  Object.entries(TC).forEach(([team,color])=>{
+    chipWrap.append('div').attr('class','team-chip').datum(team)
+      .html(`<div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div><span>${team}</span>`)
+      .on('click',function(e,d){
+        if(selected.size===0)selected.add(d);
+        else if(selected.has(d))selected.delete(d);
+        else selected.add(d);
+        applyFilter();
+      });
+  });
+  resetLink.on('click',()=>{selected.clear();applyFilter();});
+  function applyFilter(){
+    const none=selected.size===0;
+    resetLink.style('display',none?'none':'inline');
+    d3.selectAll('.team-chip').classed('dimmed',function(d){return !none&&!selected.has(d);});
+    scatterDots.transition().duration(180)
+      .attr('fill',d=>(none||selected.has(d.team))?TC[d.team]:'#c8c8c8')
+      .attr('opacity',d=>(none||selected.has(d.team))?.8:.18)
+      .attr('r',d=>(none||selected.has(d.team))?5.5:3.5);
+  }
+  const m={t:20,r:30,b:50,l:58},W=900-m.l-m.r,H=500-m.t-m.b;
+  const svg=d3.select('#scatter-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const pd=DATA.players.filter(d=>d.dollar_value!=null);
+  const maxV=Math.max(d3.max(pd,d=>d.dollar_value),d3.max(pd,d=>d.price))+5;
+  const x=d3.scaleLinear().domain([0,maxV]).range([0,W]);
+  const y=d3.scaleLinear().domain([0,maxV]).range([H,0]);
+  svg.selectAll('.gy').data(y.ticks(6)).join('line').attr('x1',0).attr('x2',W).attr('y1',d=>y(d)).attr('y2',d=>y(d)).attr('stroke',C.grd).attr('stroke-width',.5);
+  svg.append('line').attr('x1',x(0)).attr('y1',y(0)).attr('x2',x(maxV)).attr('y2',y(maxV)).attr('stroke',C.lit).attr('stroke-width',1.3).attr('stroke-dasharray','5 4').attr('opacity',.55);
+  svg.append('text').attr('x',x(maxV)-4).attr('y',y(maxV)+14).attr('text-anchor','end').attr('fill',C.lit).attr('font-size',10).text('fair value');
+  scatterDots=svg.selectAll('.sdot').data(pd).join('circle').attr('class','sdot')
+    .attr('cx',d=>x(gv(d,MODE_scatter))).attr('cy',d=>y(d.price)).attr('r',5.5).attr('fill',d=>TC[d.team]).attr('opacity',.8).attr('stroke','#faf9f5').attr('stroke-width',.8).style('cursor','pointer')
+    .on('mouseover',function(e,d){
+      d3.select(this).attr('r',8).attr('stroke',C.txt).attr('stroke-width',1.5);
+      const sv=gs(d,MODE_scatter);
+      tip(`<div class="tp">${d.player}</div><div class="tm" style="color:${TC[d.team]}">${d.team}</div>
+        <div class="tr"><span class="tl">Price paid</span><span class="tv">$${ d.price}</span></div>
+        <div class="tr"><span class="tl">Model value</span><span class="tv">$${ gv(d,MODE_scatter)}</span></div>
+        <div class="tr"><span class="tl">Surplus</span><span class="tv ${sc(sv)}">${fs(sv)}</span></div>
+        <div class="tr"><span class="tl">Position</span><span class="tv">${d.position}</span></div>
+        <div class="tr"><span class="tl">Nom #</span><span class="tv">#${d.nom}</span></div>`,e);
+    })
+    .on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('r',5.5).attr('stroke','#faf9f5').attr('stroke-width',.8);ht();});
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(7).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',11));
+  svg.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',11));
+  svg.append('text').attr('id','scatter-xlabel').attr('x',W/2).attr('y',H+42).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',12).text('ATC Model Value — Single Pool ($)');
+  svg.append('text').attr('transform','rotate(-90)').attr('x',-H/2).attr('y',-46).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',12).text('Price Paid ($)');
+})();
+function updateScatter(){
+  const pd=DATA.players.filter(d=>d.dollar_value!=null);
+  const maxV=Math.max(d3.max(pd,d=>d.dollar_value),d3.max(pd,d=>d.price))+5;
+  const W=900-88,H=500-70;
+  const x=d3.scaleLinear().domain([0,maxV]).range([0,W]);
+  scatterDots.transition().duration(400).attr('cx',d=>x(gv(d,MODE_scatter)));
+  d3.select('#scatter-xlabel').text(MODE_scatter==='single'?'ATC Model Value — Single Pool ($)':'ATC Model Value — Split Pool 61/39 ($)');
+}
+
+// ── POSITION ─────────────────────────────────────────────────────────────────
+const posOrder=['C','OF','RP','3B','1B','SS','2B','SP'];
+const posLabels={C:'Catcher',OF:'Outfield',RP:'Relief Pitcher','3B':'Third Base','1B':'First Base',SS:'Shortstop','2B':'Second Base',SP:'Starting Pitcher'};
+let posDots,posSegs,posLabelsEl;
+(function(){
+  const m={t:14,r:80,b:24,l:135},W=900-m.l-m.r,H=300-m.t-m.b;
+  const svg=d3.select('#position-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const x=d3.scaleLinear().domain([.5,2.3]).range([0,W]);
+  const y=d3.scaleBand().domain(posOrder.map(p=>posLabels[p])).range([0,H]).padding(.35);
+  svg.selectAll('.gx').data(x.ticks(6)).join('line').attr('x1',d=>x(d)).attr('x2',d=>x(d)).attr('y1',0).attr('y2',H).attr('stroke',C.grd).attr('stroke-width',.5);
+  svg.append('line').attr('x1',x(1)).attr('x2',x(1)).attr('y1',-10).attr('y2',H).attr('stroke',C.mid).attr('stroke-width',1).attr('stroke-dasharray','3 3').attr('opacity',.45);
+  svg.append('text').attr('x',x(1)).attr('y',-14).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',10).text('1.0×');
+  const pd=posOrder.map(p=>({pos:p,label:posLabels[p],ratio:DATA.positionNorm[p]?.ratio??1,count:DATA.positionNorm[p]?.count??0})).sort((a,b)=>b.ratio-a.ratio);
+  posSegs=svg.selectAll('.pseg').data(pd).join('line').attr('class','pseg').attr('x1',x(1)).attr('x2',d=>x(d.ratio)).attr('y1',d=>y(d.label)+y.bandwidth()/2).attr('y2',d=>y(d.label)+y.bandwidth()/2).attr('stroke',d=>d.ratio>=1?C.sec:C.acc).attr('stroke-width',2.2).attr('opacity',.75);
+  posDots=svg.selectAll('.pdot').data(pd).join('circle').attr('class','pdot').attr('cx',d=>x(d.ratio)).attr('cy',d=>y(d.label)+y.bandwidth()/2).attr('r',8).attr('fill',d=>d.ratio>=1?C.sec:C.acc).style('cursor','pointer')
+    .on('mouseover',(e,d)=>tip(`<div class="tp">${d.label}</div><div class="tr"><span class="tl">Market ratio</span><span class="tv">${d.ratio.toFixed(2)}×</span></div><div class="tr"><span class="tl">Players</span><span class="tv">${d.count}</span></div>`,e)).on('mousemove',mv).on('mouseout',ht);
+  posLabelsEl=svg.selectAll('.plbl').data(pd).join('text').attr('class','plbl').attr('x',d=>x(d.ratio)+(d.ratio>=1?13:-13)).attr('y',d=>y(d.label)+y.bandwidth()/2+4).attr('text-anchor',d=>d.ratio>=1?'start':'end').attr('fill',C.mid).attr('font-size',11).attr('font-weight',600).text(d=>`${d.ratio.toFixed(2)}×`);
+  svg.append('g').call(d3.axisLeft(y).tickSize(0)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.mid).attr('font-size',12));
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(6).tickFormat(d=>`${d}×`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',10));
+  posSegs._x=x; posSegs._y=y;
+})();
+function updatePosition(){
+  const x=posSegs._x,y=posSegs._y;
+  const norm=MODE_position==='single'?DATA.positionNorm:DATA.positionNormSplit;
+  const pd=posOrder.map(p=>({pos:p,label:posLabels[p],ratio:norm[p]?.ratio??1,count:norm[p]?.count??0})).sort((a,b)=>b.ratio-a.ratio);
+  posDots.data(pd).transition().duration(400).attr('cx',d=>x(d.ratio)).attr('cy',d=>y(d.label)+y.bandwidth()/2).attr('fill',d=>d.ratio>=1?C.sec:C.acc);
+  posSegs.data(pd).transition().duration(400).attr('x2',d=>x(d.ratio)).attr('x1',x(1)).attr('y1',d=>y(d.label)+y.bandwidth()/2).attr('y2',d=>y(d.label)+y.bandwidth()/2).attr('stroke',d=>d.ratio>=1?C.sec:C.acc);
+  posLabelsEl.data(pd).transition().duration(400).attr('x',d=>x(d.ratio)+(d.ratio>=1?13:-13)).attr('y',d=>y(d.label)+y.bandwidth()/2+4).attr('text-anchor',d=>d.ratio>=1?'start':'end').text(d=>`${d.ratio.toFixed(2)}×`);
+}
+
+// ── BUDGET ───────────────────────────────────────────────────────────────────
+(function(){
+  const teams=Object.entries(DATA.teamSummary).map(([n,s])=>({name:n,keeper:s.keeper_total,auction:s.auction_total,remaining:s.remaining,kcount:s.keeper_count,acount:s.count})).sort((a,b)=>(b.keeper+b.auction)-(a.keeper+a.auction));
+  const m={t:10,r:80,b:22,l:158},W=900-m.l-m.r,H=330-m.t-m.b;
+  const svg=d3.select('#budget-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const x=d3.scaleLinear().domain([0,260]).range([0,W]);
+  const y=d3.scaleBand().domain(teams.map(d=>d.name)).range([0,H]).padding(.27);
+  const bh=y.bandwidth();
+  [65,130,195,260].forEach(v=>{svg.append('line').attr('x1',x(v)).attr('x2',x(v)).attr('y1',0).attr('y2',H).attr('stroke',C.grd).attr('stroke-width',.5);});
+  svg.selectAll('.bk').data(teams).join('rect').attr('x',0).attr('y',d=>y(d.name)).attr('width',d=>x(d.keeper)).attr('height',bh).attr('fill',C.pri).attr('opacity',.75).attr('rx',2);
+  svg.selectAll('.ba').data(teams).join('rect').attr('x',d=>x(d.keeper)).attr('y',d=>y(d.name)).attr('width',d=>x(d.auction)).attr('height',bh).attr('fill',C.sec).attr('opacity',.75);
+  svg.selectAll('.br').data(teams).join('rect').attr('x',d=>x(d.keeper+d.auction)).attr('y',d=>y(d.name)).attr('width',d=>x(d.remaining)).attr('height',bh).attr('fill',C.lit).attr('opacity',.18).attr('rx',2);
+  svg.selectAll('.bo').data(teams).join('rect').attr('x',0).attr('y',d=>y(d.name)).attr('width',W).attr('height',bh).attr('fill','transparent').style('cursor','pointer')
+    .on('mouseover',(e,d)=>tip(`<div class="tp">${d.name}</div><div class="tr"><span class="tl">Keepers</span><span class="tv" style="color:${C.pri}">$${ d.keeper} (${d.kcount})</span></div><div class="tr"><span class="tl">Auction</span><span class="tv" style="color:${C.sec}">$${ d.auction} (${d.acount})</span></div><div class="tr"><span class="tl">Remaining</span><span class="tv">$${ d.remaining}</span></div>`,e)).on('mousemove',mv).on('mouseout',ht);
+  svg.selectAll('.btlbl').data(teams).join('text').attr('x',d=>x(d.keeper+d.auction)+6).attr('y',d=>y(d.name)+bh/2+4).attr('fill',C.mid).attr('font-size',11).attr('font-weight',600).text(d=>`$${ d.keeper+d.auction}`);
+  svg.append('g').call(d3.axisLeft(y).tickSize(0)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.mid).attr('font-size',12));
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).tickValues([0,65,130,195,260]).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',10));
+})();
+
+// ── SURPLUS ───────────────────────────────────────────────────────────────────
+let surpDots,surpSegs,surpLabels;
+(function(){
+  const allSurp=Object.values(DATA.teamSummary).flatMap(s=>[s.surplus_total,s.split_surplus_total]);
+  const xDom=[Math.min(...allSurp)-8,Math.max(...allSurp)+8];
+  const m={t:10,r:90,b:22,l:158},W=900-m.l-m.r,H=360-m.t-m.b;
+  const svg=d3.select('#surplus-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const x=d3.scaleLinear().domain(xDom).range([0,W]);
+  const y=d3.scaleBand().domain(Object.keys(TC)).range([0,H]).padding(.4);
+  x.ticks(6).forEach(v=>{svg.append('line').attr('x1',x(v)).attr('x2',x(v)).attr('y1',0).attr('y2',H).attr('stroke',C.grd).attr('stroke-width',.5);});
+  svg.append('line').attr('x1',x(0)).attr('x2',x(0)).attr('y1',-8).attr('y2',H).attr('stroke',C.mid).attr('stroke-width',1).attr('opacity',.35);
+  const pd=Object.entries(DATA.teamSummary).map(([n,s])=>({name:n,surplus:s.surplus_total,count:s.count,spent:s.auction_total})).sort((a,b)=>b.surplus-a.surplus);
+  surpSegs=svg.selectAll('.sseg').data(pd,d=>d.name).join('line').attr('class','sseg').attr('x1',x(0)).attr('x2',d=>x(d.surplus)).attr('y1',d=>y(d.name)+y.bandwidth()/2).attr('y2',d=>y(d.name)+y.bandwidth()/2).attr('stroke',d=>d.surplus>=0?C.acc:C.sec).attr('stroke-width',2.2).attr('opacity',.8);
+  surpDots=svg.selectAll('.sdot2').data(pd,d=>d.name).join('circle').attr('class','sdot2').attr('cx',d=>x(d.surplus)).attr('cy',d=>y(d.name)+y.bandwidth()/2).attr('r',9).attr('fill',d=>d.surplus>=0?C.acc:C.sec).style('cursor','pointer')
+    .on('mouseover',(e,d)=>tip(`<div class="tp">${d.name}</div><div class="tr"><span class="tl">Surplus (${MODE_surplus})</span><span class="tv ${sc(d.surplus)}">${fs(d.surplus)}</span></div><div class="tr"><span class="tl">Players</span><span class="tv">${d.count}</span></div><div class="tr"><span class="tl">Auction spend</span><span class="tv">$${ d.spent}</span></div>`,e)).on('mousemove',mv).on('mouseout',ht);
+  surpLabels=svg.selectAll('.slbl').data(pd,d=>d.name).join('text').attr('class','slbl').attr('x',d=>x(d.surplus)+(d.surplus>=0?14:-14)).attr('y',d=>y(d.name)+y.bandwidth()/2+4).attr('text-anchor',d=>d.surplus>=0?'start':'end').attr('fill',C.mid).attr('font-size',11).attr('font-weight',600).text(d=>fs(d.surplus));
+  svg.append('g').call(d3.axisLeft(y).tickSize(0)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.mid).attr('font-size',12));
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(6).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',10));
+  surpSegs._x=x; surpSegs._y=y;
+})();
+function updateSurplus(){
+  const x=surpSegs._x,y=surpSegs._y;
+  const pd=Object.entries(DATA.teamSummary).map(([n,s])=>({name:n,surplus:MODE_surplus==='single'?s.surplus_total:s.split_surplus_total,count:s.count,spent:s.auction_total})).sort((a,b)=>b.surplus-a.surplus);
+  surpDots.data(pd,d=>d.name).transition().duration(400).attr('cx',d=>x(d.surplus)).attr('fill',d=>d.surplus>=0?C.acc:C.sec);
+  surpSegs.data(pd,d=>d.name).transition().duration(400).attr('x2',d=>x(d.surplus)).attr('stroke',d=>d.surplus>=0?C.acc:C.sec);
+  surpLabels.data(pd,d=>d.name).transition().duration(400).attr('x',d=>x(d.surplus)+(d.surplus>=0?14:-14)).attr('text-anchor',d=>d.surplus>=0?'start':'end').text(d=>fs(d.surplus));
+}
+
+// ── SPENDING ──────────────────────────────────────────────────────────────────
+(function(){
+  const TEAMS=Object.keys(TC);
+  const m={t:10,r:32,b:42,l:158},W=900-m.l-m.r,H=460-m.t-m.b;
+  const svg=d3.select('#spending-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const maxP=d3.max(DATA.players,d=>d.price);
+  const x=d3.scaleLinear().domain([0,maxP+4]).range([0,W]);
+  const y=d3.scaleBand().domain(TEAMS).range([0,H]).padding(.15);
+  x.ticks(7).forEach(v=>{svg.append('line').attr('x1',x(v)).attr('x2',x(v)).attr('y1',0).attr('y2',H).attr('stroke',C.grd).attr('stroke-width',.5);});
+  const avgByTeam={};
+  DATA.players.forEach(d=>{if(!avgByTeam[d.team])avgByTeam[d.team]=[];avgByTeam[d.team].push(d.price);});
+  TEAMS.forEach(t=>{if(!avgByTeam[t])return;const avg=d3.mean(avgByTeam[t]);svg.append('line').attr('x1',x(avg)).attr('x2',x(avg)).attr('y1',y(t)).attr('y2',y(t)+y.bandwidth()).attr('stroke',TC[t]).attr('stroke-width',1.5).attr('opacity',.3).attr('stroke-dasharray','3 2');});
+  DATA.players.forEach(d=>{
+    const yMid=y(d.team)+y.bandwidth()/2,r=Math.sqrt(d.price)*1.9;
+    svg.append('circle').attr('cx',x(d.price)).attr('cy',yMid+(Math.random()-.5)*y.bandwidth()*.52).attr('r',r).attr('fill',d.pos_type==='hitter'?C.pri:C.sec).attr('opacity',.6).attr('stroke','#faf9f5').attr('stroke-width',.6).style('cursor','pointer')
+      .on('mouseover',function(e){
+        d3.select(this).attr('opacity',1).attr('stroke',C.txt).attr('stroke-width',1.5);
+        const sv=gs(d,'single');
+        tip(`<div class="tp">${d.player}</div><div class="tm" style="color:${TC[d.team]}">${d.team}</div><div class="tr"><span class="tl">Price paid</span><span class="tv">$${ d.price}</span></div><div class="tr"><span class="tl">Model value</span><span class="tv">$${ gv(d,'single')??'—'}</span></div><div class="tr"><span class="tl">Surplus</span><span class="tv ${sc(sv)}">${fs(sv)}</span></div><div class="tr"><span class="tl">Position</span><span class="tv">${d.position}</span></div>`,e);
+      }).on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('opacity',.6).attr('stroke','#faf9f5').attr('stroke-width',.6);ht();});
+  });
+  svg.append('g').call(d3.axisLeft(y).tickSize(0)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.mid).attr('font-size',12));
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(7).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',10));
+  svg.append('text').attr('x',W/2).attr('y',H+35).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',11).text('Price paid · dot area proportional to price · dashed = team average');
+})();
+
+// ── TIMELINE ──────────────────────────────────────────────────────────────────
+(function(){
+  const m={t:22,r:30,b:50,l:58},W=900-m.l-m.r,H=370-m.t-m.b;
+  const svg=d3.select('#timeline-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const x=d3.scaleLinear().domain([1,119]).range([0,W]);
+  const maxP=d3.max(DATA.players,d=>d.price);
+  const y=d3.scaleLinear().domain([0,maxP+5]).range([H,0]);
+  y.ticks(6).forEach(v=>{svg.append('line').attr('x1',0).attr('x2',W).attr('y1',y(v)).attr('y2',y(v)).attr('stroke',C.grd).attr('stroke-width',.5);});
+  const sorted=DATA.players.slice().sort((a,b)=>a.nom-b.nom);
+  const roll=sorted.map((d,i)=>{const sl=sorted.slice(Math.max(0,i-10+1),i+1);return{nom:d.nom,avg:d3.mean(sl,w=>w.price)};});
+  svg.append('path').datum(roll).attr('d',d3.line().x(d=>x(d.nom)).y(d=>y(d.avg)).curve(d3.curveCatmullRom)).attr('fill','none').attr('stroke',C.mid).attr('stroke-width',1.8).attr('opacity',.35);
+  svg.selectAll('.tdot').data(DATA.players).join('circle').attr('cx',d=>x(d.nom)).attr('cy',d=>y(d.price)).attr('r',5).attr('fill',d=>TC[d.team]).attr('opacity',.78).attr('stroke','#faf9f5').attr('stroke-width',.7).style('cursor','pointer')
+    .on('mouseover',function(e,d){d3.select(this).attr('r',7.5).attr('opacity',1).attr('stroke',C.txt).attr('stroke-width',1.5);tip(`<div class="tp">${d.player}</div><div class="tm" style="color:${TC[d.team]}">${d.team}</div><div class="tr"><span class="tl">Nom #</span><span class="tv">#${d.nom}</span></div><div class="tr"><span class="tl">Time</span><span class="tv">${d.timestamp}</span></div><div class="tr"><span class="tl">Price</span><span class="tv">$${ d.price}</span></div><div class="tr"><span class="tl">Position</span><span class="tv">${d.position}</span></div>`,e);}).on('mousemove',mv).on('mouseout',function(){d3.select(this).attr('r',5).attr('opacity',.78).attr('stroke','#faf9f5').attr('stroke-width',.7);ht();});
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(10)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',11));
+  svg.append('g').call(d3.axisLeft(y).ticks(6).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',11));
+  svg.append('text').attr('x',W/2).attr('y',H+42).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',12).text('Nomination order');
+  svg.append('text').attr('transform','rotate(-90)').attr('x',-H/2).attr('y',-46).attr('text-anchor','middle').attr('fill',C.mid).attr('font-size',12).text('Price paid ($)');
+})();
+
+// ── GUSTEROIDS ────────────────────────────────────────────────────────────────
+let gustCircles,gustModelLines,gustLabels;
+(function(){
+  const picks=DATA.players.filter(d=>d.team==='Gusteroids'&&d.pre_tgt!=null).sort((a,b)=>b.dollar_value-a.dollar_value);
+  const m={t:10,r:110,b:38,l:140},W=900-m.l-m.r,rowH=40,H=picks.length*rowH+4;
+  const svg=d3.select('#gusteroids-chart').append('svg').attr('width',W+m.l+m.r).attr('height',H+m.t+m.b).style('background',C.bg).append('g').attr('transform',`translate(${m.l},${m.t})`);
+  const allV=picks.flatMap(d=>[d.price,d.pre_tgt,d.pre_max,d.live_tgt,d.live_max,d.dollar_value,d.split_dollar_value].filter(v=>v!=null));
+  const xMax=Math.max(...allV)+10;
+  const x=d3.scaleLinear().domain([0,xMax]).range([0,W]);
+  const y=d3.scaleBand().domain(picks.map(d=>d.player)).range([0,H]).padding(.3);
+  x.ticks(8).forEach(v=>{svg.append('line').attr('x1',x(v)).attr('x2',x(v)).attr('y1',0).attr('y2',H).attr('stroke',C.grd).attr('stroke-width',.5);});
+  picks.forEach(d=>{
+    const yMid=y(d.player)+y.bandwidth()/2,bh=y.bandwidth();
+    if(d.pre_tgt!=null&&d.pre_max!=null){svg.append('rect').attr('x',x(d.pre_tgt)).attr('y',yMid-bh*.46).attr('width',x(d.pre_max)-x(d.pre_tgt)).attr('height',bh*.92).attr('fill',C.pri).attr('opacity',.12).attr('rx',3);}
+    if(d.live_tgt!=null&&d.live_tgt!==d.pre_tgt){svg.append('circle').attr('cx',x(d.live_tgt)).attr('cy',yMid).attr('r',4.5).attr('fill',C.mid).attr('opacity',.75);}
+    if(d.pre_tgt!=null){svg.append('circle').attr('cx',x(d.pre_tgt)).attr('cy',yMid).attr('r',5).attr('fill','#faf9f5').attr('stroke',C.pri).attr('stroke-width',2);}
+  });
+  gustModelLines=svg.selectAll('.gml').data(picks).join('line').attr('class','gml').attr('x1',d=>x(gv(d,MODE_gust))).attr('x2',d=>x(gv(d,MODE_gust))).attr('y1',d=>y(d.player)+y.bandwidth()/2-y.bandwidth()*.5).attr('y2',d=>y(d.player)+y.bandwidth()/2+y.bandwidth()*.5).attr('stroke',C.lit).attr('stroke-width',1.5).attr('stroke-dasharray','3 2');
+  gustCircles=svg.selectAll('.gpaid').data(picks).join('circle').attr('class','gpaid').attr('cx',d=>x(d.price)).attr('cy',d=>y(d.player)+y.bandwidth()/2).attr('r',9).attr('fill',d=>gv(d,MODE_gust)!=null&&d.price<=gv(d,MODE_gust)?C.acc:C.sec).attr('opacity',.9).style('cursor','pointer')
+    .on('mouseover',(e,d)=>{
+      const sv=gs(d,MODE_gust);
+      const ll=(d.live_tgt!=null&&d.live_tgt!==d.pre_tgt)?`<div class="tr"><span class="tl">Live target</span><span class="tv">$${ d.live_tgt} – $${ d.live_max}</span></div>`:'';
+      tip(`<div class="tp">${d.player}</div><div class="tr"><span class="tl">Price paid</span><span class="tv">$${ d.price}</span></div><div class="tr"><span class="tl">Model value</span><span class="tv">$${ gv(d,MODE_gust)}</span></div><div class="tr"><span class="tl">Pre-draft range</span><span class="tv">$${ d.pre_tgt} – $${ d.pre_max}</span></div>${ll}<div class="tr"><span class="tl">Surplus</span><span class="tv ${sc(sv)}">${fs(sv)}</span></div><div class="tr"><span class="tl">MSP rank</span><span class="tv">${d.msp_rank??'—'}</span></div>`,e);
+    }).on('mousemove',mv).on('mouseout',ht);
+  gustLabels=svg.selectAll('.gplbl').data(picks).join('text').attr('class','gplbl').attr('x',d=>x(d.price)+14).attr('y',d=>y(d.player)+y.bandwidth()/2+4).attr('fill',d=>gv(d,MODE_gust)!=null&&d.price<=gv(d,MODE_gust)?C.acc:C.sec).attr('font-size',11).attr('font-weight',700).text(d=>`$${ d.price}`);
+  svg.append('g').call(d3.axisLeft(y).tickSize(0)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.mid).attr('font-size',12));
+  svg.append('g').attr('transform',`translate(0,${H})`).call(d3.axisBottom(x).ticks(8).tickFormat(d=>`$${ d}`)).call(g=>g.select('.domain').remove()).call(g=>g.selectAll('.tick line').remove()).call(g=>g.selectAll('.tick text').attr('fill',C.lit).attr('font-size',10));
+  [{type:'c',f:C.acc,l:'Paid ≤ model value'},{type:'c',f:C.sec,l:'Paid > model value'},{type:'b',f:C.pri,l:'Pre-draft target range'},{type:'d',f:C.lit,l:'ATC model value (toggle-aware)'}]
+    .forEach((item,i)=>{const lx=W-195,ly=4+i*18;if(item.type==='d')svg.append('line').attr('x1',lx).attr('x2',lx+16).attr('y1',ly+5).attr('y2',ly+5).attr('stroke',item.f).attr('stroke-width',1.5).attr('stroke-dasharray','3 2');else if(item.type==='b')svg.append('rect').attr('x',lx).attr('y',ly).attr('width',16).attr('height',10).attr('fill',item.f).attr('opacity',.25).attr('rx',2);else svg.append('circle').attr('cx',lx+8).attr('cy',ly+5).attr('r',6).attr('fill',item.f);svg.append('text').attr('x',lx+22).attr('y',ly+9).attr('fill',C.mid).attr('font-size',10.5).text(item.l);});
+  gustModelLines._x=x; gustModelLines._y=y;
+})();
+function updateGusteroids(){
+  const x=gustModelLines._x;
+  gustModelLines.transition().duration(400).attr('x1',d=>x(gv(d,MODE_gust))).attr('x2',d=>x(gv(d,MODE_gust)));
+  gustCircles.transition().duration(400).attr('fill',d=>gv(d,MODE_gust)!=null&&d.price<=gv(d,MODE_gust)?C.acc:C.sec);
+  gustLabels.transition().duration(400).attr('fill',d=>gv(d,MODE_gust)!=null&&d.price<=gv(d,MODE_gust)?C.acc:C.sec);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,17 @@
+{
+  "name": "moonlight-graham-auction-2026",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "observable preview",
+    "build": "observable build",
+    "deploy": "observable deploy"
+  },
+  "type": "module",
+  "dependencies": {
+    "@observablehq/framework": "^1.13.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
