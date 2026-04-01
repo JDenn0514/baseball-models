@@ -19,6 +19,12 @@ Thumbs.db
 .vscode/
 .idea/
 
+# Git worktrees
+.worktrees/
+
+# Brainstorming mockups
+.superpowers/
+
 # Claude Code
 .claude/
 
