@@ -219,7 +219,7 @@ Below is the distribution of team home run totals across the six primary years. 
   g.append("text").attr("x", iw - 10).attr("y", -11)
     .attr("fill", C.lit).attr("font-size", 10).text("mean");
 
-  return svg.node();
+  display(svg.node());
 }
 ```
 
@@ -362,7 +362,7 @@ The 2024 home run standings below illustrate the calculation. Nine gaps separate
     .attr("fill", C.mid).attr("font-size", 10).attr("font-style", "italic")
     .text("2024 season · teams sorted by home runs · highlighted gaps exceed the mean");
 
-  return svg.node();
+  display(svg.node());
 }
 ```
 
@@ -472,7 +472,7 @@ A 320-configuration sweep tested all four methods across combinations of data wi
     .attr("dy", "0.32em").attr("fill", C.acc).attr("font-size", 9)
     .attr("font-weight", 600).text("← selected");
 
-  return svg.node();
+  display(svg.node());
 }
 ```
 
@@ -681,7 +681,7 @@ The chart below shows per-category normalized RMSE for the baseline configuratio
   g.append("text").attr("x", iw + 20).attr("y", ih - 11)
     .attr("fill", C.lit).attr("font-size", 9).text("pitching");
 
-  return svg.node();
+  display(svg.node());
 }
 ```
 
@@ -777,7 +777,7 @@ The calibrated denominators below represent how much of each counting stat separ
   g.append("text").attr("x", iw + 22).attr("y", -11)
     .attr("fill", C.lit).attr("font-size", 10).text("pitching");
 
-  return svg.node();
+  display(svg.node());
 }
 ```
 
