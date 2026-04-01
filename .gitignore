@@ -22,6 +22,9 @@ Thumbs.db
 # Git worktrees
 .worktrees/
 
+# Override global gitignore's /site pattern (mkdocs convention conflicts with our site/ dir)
+!site/
+
 # Brainstorming mockups
 .superpowers/
 
