@@ -1,11 +1,10 @@
-name: Deploy Auction Analysis (Observable Framework)
+name: Deploy (Observable Framework)
 
 on:
   push:
     branches: [main]
     paths:
-      - "reports/auction-observable/**"
-      - "reports/auction_analysis_2026_d3.html"
+      - "site/**"
   workflow_dispatch: {}
 
 jobs:
@@ -26,27 +25,27 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: reports/auction-observable/package-lock.json
+          cache-dependency-path: site/package-lock.json
 
       - name: Install dependencies
         run: npm ci
-        working-directory: reports/auction-observable
+        working-directory: site
 
       - name: Cache Observable data loader outputs
         uses: actions/cache@v4
         with:
-          path: reports/auction-observable/src/.observablehq/cache
-          key: observable-data-${{ hashFiles('reports/auction-observable/src/data/**', 'reports/auction_analysis_2026_d3.html') }}
+          path: site/src/.observablehq/cache
+          key: observable-data-${{ hashFiles('site/src/data/**') }}
 
       - name: Build
         run: npm run build
-        working-directory: reports/auction-observable
+        working-directory: site
 
       - uses: actions/configure-pages@v4
 
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: reports/auction-observable/dist
+          path: site/dist
 
       - name: Deploy to GitHub Pages
         id: deployment
