@@ -3,6 +3,7 @@ title: 2026 Moonlight Graham Auction Analysis
 date: 2026-04-01
 description: Full post-draft breakdown — value vs. price, team spending patterns, position inflation, and the Gusteroids surplus story.
 tags: [auction, interactive]
+sidebar: false
 ---
 
 ```js

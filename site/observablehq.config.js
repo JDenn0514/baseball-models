@@ -8,6 +8,6 @@ export default {
   style: "custom.css",
   toc: false,
   search: false,
-  footer: "Moonlight Graham League · AL-only keeper league",
+  footer: false,
   // No pages array — sidebar disabled, hub page handles navigation
 };

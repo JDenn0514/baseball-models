@@ -3,6 +3,7 @@ title: How We Price a Home Run
 date: 2026-04-01
 description: The statistical engine behind Moonlight Graham auction valuations — how 10 seasons of league history become calibrated dollar values.
 tags: [methodology, valuation, interactive]
+sidebar: false
 ---
 
 ```js
