@@ -21,6 +21,9 @@ const allTags = [...new Set(reports.flatMap((r) => r.tags ?? []))].sort();
 ```js
 const tagInput = Inputs.radio(["All", ...allTags], {value: "All"});
 const activeTag = Generators.input(tagInput);
+```
+
+```js
 const filtered =
   activeTag === "All"
     ? reports
