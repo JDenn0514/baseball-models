@@ -29,7 +29,7 @@ const reports = files
           return [k, val];
         })
     );
-    return { ...fm, path: "/" + file.replace(".md", "") };
+    return { ...fm, path: file.replace(".md", "") };
   })
   .filter(Boolean)
   .sort((a, b) => new Date(b.date) - new Date(a.date));
