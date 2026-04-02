@@ -14,7 +14,7 @@ toc: false
 <p class="hub-intro">Research and analysis for the Moonlight Graham fantasy baseball league — SGP valuation, auction targeting, and post-draft retrospectives.</p>
 
 ```js
-const reports = FileAttachment("data/reports.json").json();
+const reports = await FileAttachment("data/reports.json").json();
 const allTags = [...new Set(reports.flatMap((r) => r.tags ?? []))].sort();
 ```
 
